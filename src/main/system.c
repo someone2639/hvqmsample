@@ -89,6 +89,7 @@ static void idle(void *arg) {
  ***********************************************************************/
 void boot() {
     osInitialize();
+    osInitialize_isv();
     osCreateThread(&idleThread, IDLE_THREAD_ID, idle, NULL, idleThreadStack + STACKSIZE / 8,
                    IDLE_PRIORITY);
     osStartThread(&idleThread);
@@ -118,6 +119,7 @@ void boot() {
  *
  ***********************************************************************/
 void romcpy(void *dest, void *src, u32 len, s32 pri, OSIoMesg *mb, OSMesgQueue *mq) {
+    osSyncPrintf("ROMCPY D%08X S%08X L%08X RA %08X\n", dest, src, len, __builtin_return_address(0));
     osInvalDCache(dest, (s32) len);
     while (osPiStartDma(mb, pri, OS_READ, (u32) src, dest, len, mq) == -1) {
     }
@@ -125,3 +127,4 @@ void romcpy(void *dest, void *src, u32 len, s32 pri, OSIoMesg *mb, OSMesgQueue *
 }
 
 /* end */
+

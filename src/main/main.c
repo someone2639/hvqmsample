@@ -50,13 +50,13 @@ static OSMesg spMesgBuf;
  ***********************************************************************/
 /* Necessary when using the RSP version of the decoder */
 #if USE_RSP
-OSTask hvqtask;     /* RSP task data */
-HVQM2Arg hvq_sparg; /* Parameter for the HVQM2 microcode */
+static OSTask hvqtask;     /* RSP task data */
+static HVQM2Arg hvq_sparg; /* Parameter for the HVQM2 microcode */
 #endif
 
 /***********************************************************************
  * Buffer for the HVQM2 header ***********************************************************************/
-u8 hvqm_headerBuf[sizeof(HVQM2Header) + 16];
+static u8 hvqm_headerBuf[sizeof(HVQM2Header) + 16];
 
 /***********************************************************************
  * Other data
@@ -210,7 +210,7 @@ static tkAudioProc rewind(void) {
  *   buffers to the timekeeper as occasion demands.
  *
  ***********************************************************************/
-void Main(void *argument) {
+void Main2(void *argument) {
     HVQM2Header *hvqm_header;
     int h_offset, v_offset; /* Position of image display */
     int screen_offset;      /* Number of pixels from start of frame buffer to display position */

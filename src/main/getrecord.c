@@ -50,7 +50,7 @@
  * Returned value:
  *     The address of the next record
  */
-u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIoMesg *mb,
+u8 *get_record2(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIoMesg *mb,
                OSMesgQueue *mq) {
     u16 record_type;
     u32 record_size;

@@ -8,9 +8,10 @@ OUTPUT_ARCH (mips)
 
 /* Ends a segment */
 #define END_SEG(name) \
-    _##name##SegmentEnd = ADDR(.name) + SIZEOF(.name); \
-    _##name##SegmentRomEnd = __romPos + SIZEOF(.name); \
-    __romPos += SIZEOF(.name);
+    _##name##SegmentEnd = ALIGN(ADDR(.name) + SIZEOF(.name),0x10); \
+    _##name##SegmentRomEnd = _##name##SegmentEnd - _##name##SegmentStart + _##name##SegmentRomStart; \
+    __romPos = _##name##SegmentRomEnd; \
+    . = _##name##SegmentEnd;
 
 /* Starts a noload segment which is intended to contain variables which do not have data yet. */
 #define BEGIN_NOLOAD(name) \
@@ -19,8 +20,9 @@ OUTPUT_ARCH (mips)
 
 /* Ends a noload segment */
 #define END_NOLOAD(name) \
-    _##name##SegmentBssEnd = ADDR(.name.noload) + SIZEOF(.name.noload); \
-    _##name##SegmentBssSize = SIZEOF(.name.noload);
+    _##name##SegmentBssEnd = ALIGN(ADDR(.name.noload) + SIZEOF(.name.noload),0x10); \
+    _##name##SegmentBssSize = _##name##SegmentBssEnd - _##name##SegmentBssStart; \
+    . = _##name##SegmentBssEnd;
 
 SECTIONS
 {
@@ -38,24 +40,32 @@ SECTIONS
 		BUILD_DIR/asm/entry.o(.start);
       BUILD_DIR/src/main*.o(.text);
 
-      */libultra_rom.a:*.o(.text);
+      */libultra_d.a:*.o(.text);
       */libhvqm2.a:*.o(.text);
       */libgcc.a:*.o(.text);
       /usr/lib/n64/PR/rspboot.o(.text);
+#if CFB_FORMAT == 2
+      /usr/lib/n64/hvqm/hvqm2sp2.o(.text);
+#else
       /usr/lib/n64/hvqm/hvqm2sp1.o(.text);
+#endif
 
       /* data */
       BUILD_DIR/src/main*.o(.data*);
 
-      */libultra_rom.a:*.o(.data*);
+      */libultra_d.a:*.o(.data*);
       */libhvqm2.a:*.o(.data*);
       /usr/lib/n64/PR/rspboot.o(.data*);
+#if CFB_FORMAT == 2
+      /usr/lib/n64/hvqm/hvqm2sp2.o(.data*);
+#else
       /usr/lib/n64/hvqm/hvqm2sp1.o(.data*);
+#endif
 
       /* rodata */
       BUILD_DIR/src/main*.o(.*rodata*);
 
-      */libultra_rom.a:*.o(.*rodata*);
+      */libultra_d.a:*.o(.*rodata*);
       */libhvqm2.a:*.o(.*rodata*);
       */libgcc.a:*.o(.*rodata*);
    }
@@ -64,9 +74,9 @@ SECTIONS
    {
       BUILD_DIR/src/main*.o(.*bss*);
 
-      */libultra_rom.a:*.o(COMMON);
-      */libultra_rom.a:*.o(.scommon);
-      */libultra_rom.a:*.o(.*bss*);
+      */libultra_d.a:*.o(COMMON);
+      */libultra_d.a:*.o(.scommon);
+      */libultra_d.a:*.o(.*bss*);
       */libhvqm2.a:*.o(.*bss*);
    }
    END_NOLOAD(code)
@@ -113,7 +123,7 @@ SECTIONS
 
    BEGIN_SEG(hvqmdata, __romPos)
    {
-      BUILD_DIR/assets/sample.hvqm.o(.data);
+      BUILD_DIR/assets/fakecrash.hvqm.o(.data);
    }
    END_SEG(hvqmdata)
    /* Discard everything not specifically mentioned above. */
