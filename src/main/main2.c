@@ -14,6 +14,10 @@ static OSIoMesg videoDmaMesgBlock;
 static OSMesgQueue videoDmaMessageQ;
 static OSMesg videoDmaMessages[VIDEO_DMA_MSG_SIZE];
 
+#define VI_MSG_SIZE 2
+static OSMesgQueue viMessageQ;
+static OSMesg viMessages[VI_MSG_SIZE];
+
 OSTask hvqtask;     // RSP task data
 HVQM2Arg hvq_sparg; // Parameter for the HVQM2 microcode
 
@@ -31,7 +35,6 @@ u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIo
         stream += sizeof(HVQM2Record);
         record_type = load16(headerbuf->type);
         record_size = load32(headerbuf->size);
-        osSyncPrintf("RECORD {%d %08X},\n", record_type, record_size);
         if (record_type == type)
             break;
         stream += record_size;
@@ -60,6 +63,10 @@ void Main(void *argument) {
     // Acquire an SP event (if using the RSP version of the decoder)
     osCreateMesgQueue(&spMesgQ, &spMesgBuf, 1);
     osSetEventMesg(OS_EVENT_SP, &spMesgQ, NULL);
+
+    // Acquire retrace event
+    osCreateMesgQueue(&viMessageQ, viMessages, VI_MSG_SIZE);
+    osViSetEvent(&viMessageQ, 0, 1);
 
     // Create DMA message queue for the reading in of video records
     osCreateMesgQueue(&videoDmaMessageQ, videoDmaMessages, VIDEO_DMA_MSG_SIZE);
@@ -191,7 +198,7 @@ void Main(void *argument) {
                 bufno = 0;
             }
         } else {
-            // TODO: wait for next frame
+            osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
         }
 
         // Go to the process for next frame

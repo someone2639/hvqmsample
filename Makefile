@@ -117,6 +117,9 @@ clean:
 test: $(ROM)
 	ares $<
 
+test2: $(ROM)
+	parallel-launcher $<
+
 ALL_DIRS := $(BUILD_DIR) $(BUILD_DIR)/assets $(addprefix $(BUILD_DIR)/,$(SRC_DIRS))
 
 # Make sure build directory exists before compiling anything

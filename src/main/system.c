@@ -119,7 +119,6 @@ void boot() {
  *
  ***********************************************************************/
 void romcpy(void *dest, void *src, u32 len, s32 pri, OSIoMesg *mb, OSMesgQueue *mq) {
-    osSyncPrintf("ROMCPY D%08X S%08X L%08X RA %08X\n", dest, src, len, __builtin_return_address(0));
     osInvalDCache(dest, (s32) len);
     while (osPiStartDma(mb, pri, OS_READ, (u32) src, dest, len, mq) == -1) {
     }
