@@ -34,6 +34,8 @@
 #include <HVQM2File.h>
 #include <hvqm2dec.h>
 
+#define ALIGNED(x) __attribute__((aligned(x)))
+
 /*
  * Size of buffer for video records 
  */
@@ -52,7 +54,7 @@
 /*
  * Frame buffer specifications
  */
-#define NUM_CFBs	4	/* Number of frame buffers (2 or more; at least 3 recommended) */
+#define NUM_CFBs	3	/* Number of frame buffers (2 or more; at least 3 recommended) */
 
 #define	SCREEN_WD	320	/* Screen width [pixel] */
 #define	SCREEN_HT	240	/* Screen height [pixel] */
@@ -61,13 +63,8 @@
 #define CFB_FORMAT	1	/* Frame buffer format, 1: 16bit, 2: 32bit */
 #endif
 
-#if CFB_FORMAT == 2
-typedef u32 CFBPix;
-#define VIMODE	OS_VI_NTSC_LAN2
-#else
 typedef u16 CFBPix;
 #define VIMODE	OS_VI_NTSC_LAN1
-#endif
 
 #define VIFEAT  (OS_VI_DIVOT_OFF | OS_VI_GAMMA_ON)
 
@@ -96,8 +93,8 @@ typedef u16 CFBPix;
 /*
  * PCM buffer specifications
  */
-#define  NUM_PCMBUFs	3	/* Number of PCM buffers (2 or more, at least 3 recommended) */
-#define  PCMBUF_SIZE     0x10000
+#define  NUM_PCMBUFs	16	/* Number of PCM buffers (2 or more, at least 3 recommended) */
+#define  PCMBUF_SIZE     0x800
 
 /*
  * Macro for loading multi-byte data from buffer holding data from stream 
@@ -110,11 +107,14 @@ typedef u16 CFBPix;
  */
 #define IDLE_THREAD_ID         1
 #define MAIN_THREAD_ID         2
+#define AUD_THREAD_ID          3
+
 #define TIMEKEEPER_THREAD_ID   3
 #define DA_COUNTER_THREAD_ID   4
 
 #define IDLE_PRIORITY         10
 #define MAIN_PRIORITY         10
+#define AUD_PRIORITY          14
 #define TIMEKEEPER_PRIORITY   12
 #define DA_COUNTER_PRIORITY   13
 
@@ -146,34 +146,18 @@ void release_cfb(int cfbno);
 void release_all_cfb(void);
 int get_cfb();
 
-/*
- * in hvqwork.c
- */
-extern u16 hvqwork[];		/* Work buffer for HVQM2 decoder */
+typedef struct {
+    void *streamp; // ptr to first aud record
+    u32 remain; // remaining audio frames
+} AudThreadParams;
 
-#if USE_RSP
+// Buffers
+extern u16 hvqwork[];		/* Work buffer for HVQM2 decoder */
 extern u64 hvq_yieldbuf[];	/* RSP task yield buffer */
 extern HVQM2Info hvq_spfifo[];	/* Data area for HVQM2 microcode */
-#endif
-
-/*
- * in adpcmbuf.c
- */
 extern u8 adpcmbuf[];		/* Buffer for audio records ADPCM) */
-
-/*
- * in hvqbuf.c
- */
 extern u8 hvqbuf[];		/* Buffer for video records (HVQM2) */
-
-/*
- * in pcmbuf.c
- */
 extern s16 pcmbuf[NUM_PCMBUFs][PCMBUF_SIZE]; /* PCM data buffer */
-
-/*
- * in cfb.c
- */
 extern CFBPix cfb[NUM_CFBs][SCREEN_WD*SCREEN_HT]; /* Image frame buffer */
 
 /*

@@ -81,49 +81,17 @@ SECTIONS
    }
    END_NOLOAD(code)
 
-   . = 0x80040000;
-   
-   BEGIN_NOLOAD(hvqmwork)
-   {
-      BUILD_DIR/src/buffers/hvqmwork.o(.bss*);
-   }
-   END_NOLOAD(hvqmwork)
-
-   . = 0x80080000;
-   
-   BEGIN_NOLOAD(adpcmbuf)
-   {
-      BUILD_DIR/src/buffers/adpcmbuf.o(.bss*);
-   }
-   END_NOLOAD(adpcmbuf)
-
    . = 0x80100000;
    
-   BEGIN_NOLOAD(hvqbuf)
+   BEGIN_NOLOAD(hvqmbufs)
    {
-      BUILD_DIR/src/buffers/hvqbuf.o(.bss*);
+      BUILD_DIR/src/buffers/hvqm_buffers.o(.bss*);
    }
-   END_NOLOAD(hvqbuf)
-
-   . = 0x801c0000;
-   
-   BEGIN_NOLOAD(pcmbuf)
-   {
-      BUILD_DIR/src/buffers/pcmbuf.o(.bss*);
-   }
-   END_NOLOAD(pcmbuf)
-
-   . = 0x80200000;
-   
-   BEGIN_NOLOAD(cfb)
-   {
-      BUILD_DIR/src/buffers/cfb.o(.bss*);
-   }
-   END_NOLOAD(cfb)
+   END_NOLOAD(hvqmbufs)
 
    BEGIN_SEG(hvqmdata, __romPos)
    {
-      BUILD_DIR/assets/fakecrash.hvqm.o(.data);
+      BUILD_DIR/assets/sample.hvqm.o(.data);
    }
    END_SEG(hvqmdata)
    /* Discard everything not specifically mentioned above. */

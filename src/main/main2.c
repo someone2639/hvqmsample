@@ -21,7 +21,10 @@ static OSMesg viMessages[VI_MSG_SIZE];
 OSTask hvqtask;     // RSP task data
 HVQM2Arg hvq_sparg; // Parameter for the HVQM2 microcode
 
-u8 hvqm_headerBuf[sizeof(HVQM2Header) + 16];
+HVQM2Header hvqm_header __attribute__((aligned(16)));
+
+static OSThread audThread;
+static u64 audThreadStack[STACKSIZE / 8];
 
 u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIoMesg *mb,
                OSMesgQueue *mq) {
@@ -54,11 +57,8 @@ u64 getTime() {
 }
 
 void Main(void *argument) {
-    HVQM2Header *hvqm_header;
     int h_offset, v_offset; // Position of image display
     int screen_offset;      // Number of pixels from start of frame buffer to display position
-
-    hvqm_header = OS_DCACHE_ROUNDUP_ADDR(hvqm_headerBuf);
 
     // Acquire an SP event (if using the RSP version of the decoder)
     osCreateMesgQueue(&spMesgQ, &spMesgBuf, 1);
@@ -89,34 +89,52 @@ void Main(void *argument) {
 
 
     // Initialize the frame buffer (clear buffer contents and status flag)
-    init_cfb();
-    osViSwapBuffer(cfb[NUM_CFBs - 1]);
+    // osViSwapBuffer(cfb[NUM_CFBs - 1]);
 
     // Fetch the HVQM2 header
-    romcpy(hvqm_header, _hvqmdataSegmentRomStart, sizeof(HVQM2Header), OS_MESG_PRI_NORMAL,
+    romcpy(&hvqm_header, _hvqmdataSegmentRomStart, sizeof(HVQM2Header), OS_MESG_PRI_NORMAL,
            &videoDmaMesgBlock, &videoDmaMessageQ);
 
-    u32 total_frames = load32(hvqm_header->total_frames);
-    u32 usec_per_frame = load32(hvqm_header->usec_per_frame);
-    u32 total_audio_records = load32(hvqm_header->total_audio_records);
+    u32 total_frames = load32(hvqm_header.total_frames);
+    u32 usec_per_frame = load32(hvqm_header.usec_per_frame);
+    u32 total_audio_records = load32(hvqm_header.total_audio_records);
+
+    void *video_streamP = _hvqmdataSegmentRomStart + sizeof(HVQM2Header);
+    u32 video_remain = total_frames;
+
+    void *audio_streamP = _hvqmdataSegmentRomStart + sizeof(HVQM2Header);
+    u32 audio_remain = total_audio_records;
+
+    extern void AudioMain(void *arg);
+    AudThreadParams parms;
+    parms.streamp = audio_streamP;
+    parms.remain = audio_remain;
+    osCreateThread(&audThread, AUD_THREAD_ID, AudioMain, &parms, audThreadStack + STACKSIZE / 8,
+                   AUD_PRIORITY);
+    osStartThread(&audThread);
+
+    // WARNING: If sample rate is lower than 32000, emulators will not handle it
+    // if (hvqm_header.samples_per_sec) {
+    //     osAiSetFrequency(hvqm_header.samples_per_sec);
+    // }
 
     /*
      * Determine video display position
      * (adjust offset so a small image is expanded in the center of the
      *  frame buffer)
      */
-    h_offset = (SCREEN_WD - hvqm_header->width) / 2;
-    v_offset = (SCREEN_HT - hvqm_header->height) / 2;
+    h_offset = (SCREEN_WD - hvqm_header.width) / 2;
+    v_offset = (SCREEN_HT - hvqm_header.height) / 2;
     screen_offset = SCREEN_WD * v_offset + h_offset;
 
     // Setup the HVQM2 image decoder
-    hvqm2SetupSP1(hvqm_header, SCREEN_WD);
+    hvqm2SetupSP1(&hvqm_header, SCREEN_WD);
 
     // Repetitive playback loop
     int prev_bufno = -1;
-    u32 video_remain = total_frames;
     u64 disptime = 0;
-    void *video_streamP = _hvqmdataSegmentRomStart + sizeof(HVQM2Header);
+
+    int bufno = 0;
 
     while (video_remain > 0) {
         osSyncPrintf("vremain %d\n", video_remain);
@@ -124,7 +142,6 @@ void Main(void *argument) {
         u8 header_buffer[sizeof(HVQM2Record) + 16];
         HVQM2Record *record_header;
         u16 frame_format;
-        int bufno;
 
         /*
          * Fetch video record
@@ -152,21 +169,21 @@ void Main(void *argument) {
          * time equal to 2 or more frames.
          *
          */
-        if (disptime > 0) { // Excluding the first frame
-            if (getTime() > (disptime + (usec_per_frame * 2))) {
-                do {
-                    disptime += usec_per_frame;
-                    if (--video_remain == 0)
-                        break;
-                    video_streamP =
-                        get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP,
-                                   &videoDmaMesgBlock, &videoDmaMessageQ);
-                } while (load16(record_header->format) != HVQM2_VIDEO_KEYFRAME
-                         || getTime() > disptime);
-                if (video_remain == 0)
-                    break;
-            }
-        }
+        // if (disptime > 0) { // Excluding the first frame
+        //     if (getTime() > (disptime + (usec_per_frame * 2))) {
+        //         do {
+        //             disptime += usec_per_frame;
+        //             if (--video_remain == 0)
+        //                 break;
+        //             video_streamP =
+        //                 get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP,
+        //                            &videoDmaMesgBlock, &videoDmaMessageQ);
+        //         } while (load16(record_header->format) != HVQM2_VIDEO_KEYFRAME
+        //                  || getTime() > disptime);
+        //         if (video_remain == 0)
+        //             break;
+        //     }
+        // }
 
         // Decode the compressed image data and expand it in the frame buffer
         frame_format = load16(record_header->format);
@@ -190,6 +207,8 @@ void Main(void *argument) {
             }
         }
 
+        osWritebackDCacheAll();
+
         if (frame_format != HVQM2_VIDEO_HOLD) {
             osViSwapBuffer(cfb[bufno]);
         
@@ -197,10 +216,9 @@ void Main(void *argument) {
             if (bufno >= NUM_CFBs) {
                 bufno = 0;
             }
-        } else {
-            osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
         }
 
+        osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
         // Go to the process for next frame
         disptime += usec_per_frame;
         --video_remain;
