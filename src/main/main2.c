@@ -26,6 +26,9 @@ HVQM2Header hvqm_header __attribute__((aligned(16)));
 static OSThread audThread;
 static u64 audThreadStack[STACKSIZE / 8];
 
+extern void AudioMain(void *arg);
+AudThreadParams parms ALIGNED(8);
+
 u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIoMesg *mb,
                OSMesgQueue *mq) {
     u16 record_type;
@@ -105,8 +108,6 @@ void Main(void *argument) {
     void *audio_streamP = _hvqmdataSegmentRomStart + sizeof(HVQM2Header);
     u32 audio_remain = total_audio_records;
 
-    extern void AudioMain(void *arg);
-    AudThreadParams parms;
     parms.streamp = audio_streamP;
     parms.remain = audio_remain;
     osCreateThread(&audThread, AUD_THREAD_ID, AudioMain, &parms, audThreadStack + STACKSIZE / 8,
@@ -114,9 +115,9 @@ void Main(void *argument) {
     osStartThread(&audThread);
 
     // WARNING: If sample rate is lower than 32000, emulators will not handle it
-    // if (hvqm_header.samples_per_sec) {
-    //     osAiSetFrequency(hvqm_header.samples_per_sec);
-    // }
+    if (hvqm_header.samples_per_sec) {
+        osAiSetFrequency(hvqm_header.samples_per_sec);
+    }
 
     /*
      * Determine video display position
@@ -137,7 +138,7 @@ void Main(void *argument) {
     int bufno = 0;
 
     while (video_remain > 0) {
-        osSyncPrintf("vremain %d\n", video_remain);
+        osSyncPrintf("vremain %d", video_remain);
 
         u8 header_buffer[sizeof(HVQM2Record) + 16];
         HVQM2Record *record_header;
@@ -190,7 +191,9 @@ void Main(void *argument) {
 
         if (frame_format == HVQM2_VIDEO_HOLD) {
            // do nothing
+            osSyncPrintf(" (hold)\n");
         } else {
+            osSyncPrintf(" (key/predict)\n");
             int status;
             // Process first half in the CPU
             hvqtask.t.flags = 0;
@@ -224,7 +227,7 @@ void Main(void *argument) {
         --video_remain;
     }
 
-    osSyncPrintf("PLAYBACK COMPLETE\n");
+    osSyncPrintf("VID PLAYBACK COMPLETE\n");
 
     while (1) { ; }
 }

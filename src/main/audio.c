@@ -92,13 +92,16 @@ void process_audio(void **streamp) {
     }
 }
 
+AudThreadParams localparms ALIGNED(8);
 
 void AudioMain(void *arg) {
-    AudThreadParams *args = arg;
+    localparms = *(AudThreadParams*)arg;
+    AudThreadParams *args = &localparms;
     init_audio(&args->streamp);
+    
     while (1) {
         if (args->remain != 0) {
-            osSyncPrintf("aremain %d\n", args->remain);
+            osSyncPrintf("    aremain %d\n", args->remain);
             process_audio(&args->streamp);
             args->remain--;
         } else {

@@ -120,8 +120,7 @@ void boot() {
  ***********************************************************************/
 void romcpy(void *dest, void *src, u32 len, s32 pri, OSIoMesg *mb, OSMesgQueue *mq) {
     osInvalDCache(dest, (s32) len);
-    while (osPiStartDma(mb, pri, OS_READ, (u32) src, dest, len, mq) == -1) {
-    }
+    while (osPiStartDma(mb, pri, OS_READ, (u32) src, dest, len, mq) == -1);
     osRecvMesg(mq, (OSMesg *) NULL, OS_MESG_BLOCK);
 }
 
