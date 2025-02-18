@@ -92,18 +92,23 @@ void process_audio(void **streamp) {
     }
 }
 
-AudThreadParams localparms ALIGNED(8);
-
 void AudioMain(void *arg) {
-    localparms = *(AudThreadParams*)arg;
-    AudThreadParams *args = &localparms;
-    init_audio(&args->streamp);
+    AudThreadParams *args = arg;
+    void *streamp = args->streamp;
+    register u32 audio_remain = args->remain;
+
+    init_audio(&streamp);
     
     while (1) {
-        if (args->remain != 0) {
-            osSyncPrintf("    aremain %d\n", args->remain);
-            process_audio(&args->streamp);
-            args->remain--;
+        extern OSMesgQueue viMessageQ;
+        osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
+        if (audio_remain != 0) {
+            osSyncPrintf("    aremain %d\n", audio_remain);
+            process_audio(&streamp);
+            audio_remain--;
+            if (currBuf->len < 0x80) {
+                break;
+            }
         } else {
             break;
         }

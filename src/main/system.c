@@ -70,8 +70,13 @@ static void idle(void *arg) {
     osViSetSpecialFeatures(VIFEAT);
     osViSetSpecialFeatures(OS_VI_GAMMA_OFF);
 
+    #define VIDEO(x) (_ ## x ## SegmentRomStart)
+    #define EXTERN_VIDEO(x) extern u8 (_ ## x ## SegmentRomStart)[];
+
+    EXTERN_VIDEO(hvqmdata);
+
     /* Start main thread */
-    osCreateThread(&mainThread, MAIN_THREAD_ID, mainproc, NULL, mainThreadStack + STACKSIZE / 8,
+    osCreateThread(&mainThread, MAIN_THREAD_ID, mainproc, VIDEO(hvqmdata), mainThreadStack + STACKSIZE / 8,
                    MAIN_PRIORITY);
     osStartThread(&mainThread);
 
@@ -119,6 +124,7 @@ void boot() {
  *
  ***********************************************************************/
 void romcpy(void *dest, void *src, u32 len, s32 pri, OSIoMesg *mb, OSMesgQueue *mq) {
+    osSyncPrintf("    [ROMCPY] %08X <- [%08X, %08X]\n", dest, src, len);
     osInvalDCache(dest, (s32) len);
     while (osPiStartDma(mb, pri, OS_READ, (u32) src, dest, len, mq) == -1);
     osRecvMesg(mq, (OSMesg *) NULL, OS_MESG_BLOCK);

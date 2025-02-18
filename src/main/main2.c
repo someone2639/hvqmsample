@@ -15,7 +15,7 @@ static OSMesgQueue videoDmaMessageQ;
 static OSMesg videoDmaMessages[VIDEO_DMA_MSG_SIZE];
 
 #define VI_MSG_SIZE 2
-static OSMesgQueue viMessageQ;
+OSMesgQueue viMessageQ;
 static OSMesg viMessages[VI_MSG_SIZE];
 
 OSTask hvqtask;     // RSP task data
@@ -27,13 +27,19 @@ static OSThread audThread;
 static u64 audThreadStack[STACKSIZE / 8];
 
 extern void AudioMain(void *arg);
-AudThreadParams parms ALIGNED(8);
+
+char *htable[] = {
+    [HVQM2_AUDIO] = "AUDIO",
+    [HVQM2_VIDEO] = "VIDEO",
+};
 
 u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIoMesg *mb,
                OSMesgQueue *mq) {
     u16 record_type;
     u32 record_size;
     s32 pri;
+
+    osSyncPrintf("[GETRECORD] %s\n", htable[type]);
 
     pri = (type == HVQM2_AUDIO) ? OS_MESG_PRI_HIGH : OS_MESG_PRI_NORMAL;
     for (;;) {
@@ -59,7 +65,7 @@ u64 getTime() {
     return OS_CYCLES_TO_USEC(osGetTime() - last_time);
 }
 
-void Main(void *argument) {
+void Main(void *video) {
     int h_offset, v_offset; // Position of image display
     int screen_offset;      // Number of pixels from start of frame buffer to display position
 
@@ -95,19 +101,20 @@ void Main(void *argument) {
     // osViSwapBuffer(cfb[NUM_CFBs - 1]);
 
     // Fetch the HVQM2 header
-    romcpy(&hvqm_header, _hvqmdataSegmentRomStart, sizeof(HVQM2Header), OS_MESG_PRI_NORMAL,
+    romcpy(&hvqm_header, video, sizeof(HVQM2Header), OS_MESG_PRI_NORMAL,
            &videoDmaMesgBlock, &videoDmaMessageQ);
 
     u32 total_frames = load32(hvqm_header.total_frames);
     u32 usec_per_frame = load32(hvqm_header.usec_per_frame);
     u32 total_audio_records = load32(hvqm_header.total_audio_records);
 
-    void *video_streamP = _hvqmdataSegmentRomStart + sizeof(HVQM2Header);
+    void *video_streamP = video + sizeof(HVQM2Header);
     u32 video_remain = total_frames;
 
-    void *audio_streamP = _hvqmdataSegmentRomStart + sizeof(HVQM2Header);
+    void *audio_streamP = video + sizeof(HVQM2Header);
     u32 audio_remain = total_audio_records;
 
+    AudThreadParams parms;
     parms.streamp = audio_streamP;
     parms.remain = audio_remain;
     osCreateThread(&audThread, AUD_THREAD_ID, AudioMain, &parms, audThreadStack + STACKSIZE / 8,
@@ -138,7 +145,7 @@ void Main(void *argument) {
     int bufno = 0;
 
     while (video_remain > 0) {
-        osSyncPrintf("vremain %d", video_remain);
+        osSyncPrintf("vremain %d\n", video_remain);
 
         u8 header_buffer[sizeof(HVQM2Record) + 16];
         HVQM2Record *record_header;
@@ -191,9 +198,7 @@ void Main(void *argument) {
 
         if (frame_format == HVQM2_VIDEO_HOLD) {
            // do nothing
-            osSyncPrintf(" (hold)\n");
         } else {
-            osSyncPrintf(" (key/predict)\n");
             int status;
             // Process first half in the CPU
             hvqtask.t.flags = 0;

@@ -118,7 +118,7 @@ typedef u16 CFBPix;
 #define TIMEKEEPER_PRIORITY   12
 #define DA_COUNTER_PRIORITY   13
 
-#define PI_COMMAND_QUEUE_SIZE	4
+#define PI_COMMAND_QUEUE_SIZE	8
 
 /*
  * in main.c
@@ -151,6 +151,8 @@ typedef struct {
     u32 remain; // remaining audio frames
 } AudThreadParams;
 
+extern HVQM2Header hvqm_header;
+
 // Buffers
 extern u16 hvqwork[];		/* Work buffer for HVQM2 decoder */
 extern u64 hvq_yieldbuf[];	/* RSP task yield buffer */
@@ -163,7 +165,7 @@ extern CFBPix cfb[NUM_CFBs][SCREEN_WD*SCREEN_HT]; /* Image frame buffer */
 /*
  *  Address of HVQM2 data
  */
-extern char _hvqmdataSegmentRomStart[], _hvqmdataSegmentRomEnd[];
+// extern char _hvqmdataSegmentRomStart[], _hvqmdataSegmentRomEnd[];
 
 #endif /* _LANGUAGE_C */
 

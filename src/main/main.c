@@ -188,7 +188,7 @@ static u32 next_audio_record(void *pcmbuf) {
  *
  ***********************************************************************/
 static tkAudioProc rewind(void) {
-    video_streamP = audio_streamP = _hvqmdataSegmentRomStart + sizeof(HVQM2Header);
+    video_streamP = audio_streamP = 0 + sizeof(HVQM2Header);
     audio_remain = total_audio_records;
     video_remain = total_frames;
     disptime = 0;
@@ -285,7 +285,7 @@ void Main2(void *argument) {
     /*
      * Fetch the HVQM2 header
      */
-    romcpy(hvqm_header, _hvqmdataSegmentRomStart, sizeof(HVQM2Header), OS_MESG_PRI_NORMAL,
+    romcpy(hvqm_header, 0, sizeof(HVQM2Header), OS_MESG_PRI_NORMAL,
            &videoDmaMesgBlock, &videoDmaMessageQ);
 
     /*
