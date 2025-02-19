@@ -149,6 +149,7 @@ int get_cfb();
 typedef struct {
     void *streamp; // ptr to first aud record
     u32 remain; // remaining audio frames
+    u32 samples_per_sec;
 } AudThreadParams;
 
 extern HVQM2Header hvqm_header;

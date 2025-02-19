@@ -65,6 +65,8 @@ u64 getTime() {
     return OS_CYCLES_TO_USEC(osGetTime() - last_time);
 }
 
+u64 disptime_us = 0;
+
 void Main(void *video) {
     int h_offset, v_offset; // Position of image display
     int screen_offset;      // Number of pixels from start of frame buffer to display position
@@ -114,16 +116,15 @@ void Main(void *video) {
     void *audio_streamP = video + sizeof(HVQM2Header);
     u32 audio_remain = total_audio_records;
 
-    AudThreadParams parms;
-    parms.streamp = audio_streamP;
-    parms.remain = audio_remain;
-    osCreateThread(&audThread, AUD_THREAD_ID, AudioMain, &parms, audThreadStack + STACKSIZE / 8,
-                   AUD_PRIORITY);
-    osStartThread(&audThread);
 
-    // WARNING: If sample rate is lower than 32000, emulators will not handle it
-    if (hvqm_header.samples_per_sec) {
-        osAiSetFrequency(hvqm_header.samples_per_sec);
+    if (total_audio_records != 0) {
+        AudThreadParams parms;
+        parms.streamp = audio_streamP;
+        parms.remain = audio_remain;
+        parms.samples_per_sec = hvqm_header.samples_per_sec;
+        osCreateThread(&audThread, AUD_THREAD_ID, AudioMain, &parms, audThreadStack + STACKSIZE / 8,
+                       AUD_PRIORITY);
+        osStartThread(&audThread);
     }
 
     /*
@@ -140,8 +141,6 @@ void Main(void *video) {
 
     // Repetitive playback loop
     int prev_bufno = -1;
-    u64 disptime = 0;
-
     int bufno = 0;
 
     while (video_remain > 0) {
@@ -158,40 +157,27 @@ void Main(void *video) {
         video_streamP = get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP,
                                    &videoDmaMesgBlock, &videoDmaMessageQ);
 
-        /*
-         *   This block is an example of how to force the video to play
-         * in sync with the audio.
-         *
-         *   The video and audio is synchronized and played back by the
-         * timekeeper thread, but this assumes the video (frame buffer)
-         * is always completed and sent to the timekeeper thread before
-         * its scheduled display time.
-         *
-         *   But with mixed I/O the compressed data can be read late and
-         * decoding can take more time due to the increased burden on the
-         * CPU, leading to a situation where the video can become delayed
-         * relative to the audio.
-         *
-         *   One way to counter this is to skip to the next keyframe
-         * whenever the frame to be decoded is late by an amount of
-         * time equal to 2 or more frames.
-         *
-         */
-        // if (disptime > 0) { // Excluding the first frame
-        //     if (getTime() > (disptime + (usec_per_frame * 2))) {
-        //         do {
-        //             disptime += usec_per_frame;
-        //             if (--video_remain == 0)
-        //                 break;
-        //             video_streamP =
-        //                 get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP,
-        //                            &videoDmaMesgBlock, &videoDmaMessageQ);
-        //         } while (load16(record_header->format) != HVQM2_VIDEO_KEYFRAME
-        //                  || getTime() > disptime);
-        //         if (video_remain == 0)
-        //             break;
-        //     }
-        // }
+        // frameskip
+        extern u64 playtime_us;
+        osSyncPrintf("(DISPTIME %lld)\n", disptime_us);
+        if (playtime_us != 0) {
+            while (playtime_us > (disptime_us + (usec_per_frame * 2))) {
+                osSyncPrintf("(FRAMESKIP %lld)\n", disptime_us);
+                disptime_us += usec_per_frame;
+                video_streamP = get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP,
+                                           &videoDmaMesgBlock, &videoDmaMessageQ);
+                video_remain--;
+                if (record_header->format == HVQM2_VIDEO_KEYFRAME) {
+                    break;
+                }
+                if (video_remain == 0) {
+                    break;
+                }
+            }
+            if (video_remain == 0) {
+                break;
+            }
+        }
 
         // Decode the compressed image data and expand it in the frame buffer
         frame_format = load16(record_header->format);
@@ -228,7 +214,7 @@ void Main(void *video) {
 
         osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
         // Go to the process for next frame
-        disptime += usec_per_frame;
+        disptime_us += usec_per_frame;
         --video_remain;
     }
 

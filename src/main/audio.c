@@ -19,15 +19,14 @@ static OSMesg aiMessages[AI_MSG_SIZE];
 
 static ADPCMstate adpcm_state;
 
-
-typedef struct {
+struct AudioRing {
     struct AudioRing *next;
     u32 len;
     u32 open;
-    u32 *samples;
-} AudioRing;
+    s16 (*samples)[PCMBUF_SIZE];
+};
 
-AudioRing rbuffer[] = {
+struct AudioRing rbuffer[] = {
     {.next = &rbuffer[1]},
     {.next = &rbuffer[2]},
     {.next = &rbuffer[3]},
@@ -46,7 +45,10 @@ AudioRing rbuffer[] = {
     {.next = &rbuffer[0]},
 };
 
-AudioRing *currBuf;
+struct AudioRing *currBuf;
+
+u64 playtime_us = 0;
+u32 real_frequency = 0;
 
 static u32 next_audio_record(void **streamp, void *pcmbuf) {
     HVQM2Record record_header __attribute__((aligned(16)));
@@ -86,6 +88,7 @@ void process_audio(void **streamp) {
     int result = osAiSetNextBuffer(currBuf->samples, PCMBUF_SIZE * sizeof(u16));
 
     if (result == 0) {
+        playtime_us += (((f32)currBuf->len / (f32)real_frequency) * 1000000.0f);
         currBuf = currBuf->next;
         currBuf->len = next_audio_record(streamp, currBuf->samples);
         osRecvMesg(&aiMessageQ, NULL, OS_MESG_BLOCK);
@@ -96,6 +99,8 @@ void AudioMain(void *arg) {
     AudThreadParams *args = arg;
     void *streamp = args->streamp;
     register u32 audio_remain = args->remain;
+    // WARNING: If sample rate is lower than 32000, emulators will slow down!
+    real_frequency = osAiSetFrequency(args->samples_per_sec);
 
     init_audio(&streamp);
     
@@ -103,7 +108,16 @@ void AudioMain(void *arg) {
         extern OSMesgQueue viMessageQ;
         osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
         if (audio_remain != 0) {
-            osSyncPrintf("    aremain %d\n", audio_remain);
+            osSyncPrintf("    ");
+            extern u64 disptime;
+            if (disptime != 0) {
+                // while (playtime_us > disptime) {
+                //     osSyncPrintf("(ADESYNC %lld > %lld)\n", playtime_us, disptime);
+                //     osYieldThread();
+                // }
+            }
+            osSyncPrintf("aremain %d\n", audio_remain);
+            osSyncPrintf("PLAYTIME %lld\n", playtime_us);
             process_audio(&streamp);
             audio_remain--;
             if (currBuf->len < 0x80) {

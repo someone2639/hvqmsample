@@ -44,11 +44,7 @@ SECTIONS
       */libhvqm2.a:*.o(.text);
       */libgcc.a:*.o(.text);
       /usr/lib/n64/PR/rspboot.o(.text);
-#if CFB_FORMAT == 2
-      /usr/lib/n64/hvqm/hvqm2sp2.o(.text);
-#else
       /usr/lib/n64/hvqm/hvqm2sp1.o(.text);
-#endif
 
       /* data */
       BUILD_DIR/src/main*.o(.data*);
@@ -56,11 +52,7 @@ SECTIONS
       */libultra_d.a:*.o(.data*);
       */libhvqm2.a:*.o(.data*);
       /usr/lib/n64/PR/rspboot.o(.data*);
-#if CFB_FORMAT == 2
-      /usr/lib/n64/hvqm/hvqm2sp2.o(.data*);
-#else
       /usr/lib/n64/hvqm/hvqm2sp1.o(.data*);
-#endif
 
       /* rodata */
       BUILD_DIR/src/main*.o(.*rodata*);
@@ -91,7 +83,7 @@ SECTIONS
 
    BEGIN_SEG(hvqmdata, __romPos)
    {
-      BUILD_DIR/assets/fakecrash.hvqm.o(.data);
+      BUILD_DIR/assets/sample.hvqm.o(.data);
    }
    END_SEG(hvqmdata)
    /* Discard everything not specifically mentioned above. */
