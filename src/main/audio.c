@@ -100,22 +100,22 @@ void AudioMain(void *arg) {
     void *streamp = args->streamp;
     register u32 audio_remain = args->remain;
     // WARNING: If sample rate is lower than 32000, emulators will slow down!
+    osSyncPrintf("SAMPLE RATE: %d\n", args->samples_per_sec);
     real_frequency = osAiSetFrequency(args->samples_per_sec);
 
     init_audio(&streamp);
     
     while (1) {
         extern OSMesgQueue viMessageQ;
-        osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
         if (audio_remain != 0) {
             osSyncPrintf("    ");
-            extern u64 disptime;
-            if (disptime != 0) {
-                // while (playtime_us > disptime) {
-                //     osSyncPrintf("(ADESYNC %lld > %lld)\n", playtime_us, disptime);
-                //     osYieldThread();
-                // }
-            }
+            extern u64 disptime_us;
+            // if (disptime_us != 0) {
+            //     while (playtime_us > disptime_us) {
+            //         osSyncPrintf("(ADESYNC %lld > %lld)\n", playtime_us, disptime_us);
+            //         osYieldThread();
+            //     }
+            // }
             osSyncPrintf("aremain %d\n", audio_remain);
             osSyncPrintf("PLAYTIME %lld\n", playtime_us);
             process_audio(&streamp);

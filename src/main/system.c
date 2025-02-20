@@ -75,6 +75,8 @@ static void idle(void *arg) {
 
     EXTERN_VIDEO(hvqmdata);
 
+    crash_screen_init(0);
+
     /* Start main thread */
     osCreateThread(&mainThread, MAIN_THREAD_ID, mainproc, VIDEO(hvqmdata), mainThreadStack + STACKSIZE / 8,
                    MAIN_PRIORITY);
@@ -124,7 +126,7 @@ void boot() {
  *
  ***********************************************************************/
 void romcpy(void *dest, void *src, u32 len, s32 pri, OSIoMesg *mb, OSMesgQueue *mq) {
-    osSyncPrintf("    [ROMCPY] %08X <- [%08X, %08X]\n", dest, src, len);
+    // osSyncPrintf("    [ROMCPY] %08X <- [%08X, %08X]\n", dest, src, len);
     osInvalDCache(dest, (s32) len);
     while (osPiStartDma(mb, pri, OS_READ, (u32) src, dest, len, mq) == -1);
     osRecvMesg(mq, (OSMesg *) NULL, OS_MESG_BLOCK);

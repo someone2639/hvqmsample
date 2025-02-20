@@ -108,6 +108,7 @@ typedef u16 CFBPix;
 #define IDLE_THREAD_ID         1
 #define MAIN_THREAD_ID         2
 #define AUD_THREAD_ID          3
+#define FAULT_THREAD_ID        4
 
 #define TIMEKEEPER_THREAD_ID   3
 #define DA_COUNTER_THREAD_ID   4

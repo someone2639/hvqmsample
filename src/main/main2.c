@@ -39,7 +39,7 @@ u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIo
     u32 record_size;
     s32 pri;
 
-    osSyncPrintf("[GETRECORD] %s\n", htable[type]);
+    // osSyncPrintf("[GETRECORD] %s\n", htable[type]);
 
     pri = (type == HVQM2_AUDIO) ? OS_MESG_PRI_HIGH : OS_MESG_PRI_NORMAL;
     for (;;) {
@@ -58,7 +58,7 @@ u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIo
     }
     return stream;
 }
-
+#define RSP
 u64 getTime() {
     static u64 last_time = 0;
 
@@ -85,7 +85,11 @@ void Main(void *video) {
     // Initialize the HVQM2 decoder
     // If using the RSP version of the decoder
     // also setup the RSP task data next
+#ifdef RSP
     hvqm2InitSP1(0xff);
+#else
+    hvqm2Init1(0xff);
+#endif
     hvqtask.t.ucode = (u64 *) hvqm2sp1TextStart;
     hvqtask.t.ucode_size = (int) hvqm2sp1TextEnd - (int) hvqm2sp1TextStart;
     hvqtask.t.ucode_data = (u64 *) hvqm2sp1DataStart;
@@ -124,7 +128,6 @@ void Main(void *video) {
         parms.samples_per_sec = hvqm_header.samples_per_sec;
         osCreateThread(&audThread, AUD_THREAD_ID, AudioMain, &parms, audThreadStack + STACKSIZE / 8,
                        AUD_PRIORITY);
-        osStartThread(&audThread);
     }
 
     /*
@@ -137,30 +140,33 @@ void Main(void *video) {
     screen_offset = SCREEN_WD * v_offset + h_offset;
 
     // Setup the HVQM2 image decoder
+#ifdef RSP
     hvqm2SetupSP1(&hvqm_header, SCREEN_WD);
+#else
+    hvqm2Setup1(&hvqm_header, SCREEN_WD);
+#endif
 
     // Repetitive playback loop
     int prev_bufno = -1;
     int bufno = 0;
 
     while (video_remain > 0) {
-        osSyncPrintf("vremain %d\n", video_remain);
+        // osSyncPrintf("vremain %d\n", video_remain);
 
-        u8 header_buffer[sizeof(HVQM2Record) + 16];
-        HVQM2Record *record_header;
+        u8 header_buffer[sizeof(HVQM2Record) + 16] ALIGNED(16);
+        HVQM2Record *record_header = header_buffer;
         u16 frame_format;
 
         /*
          * Fetch video record
          */
-        record_header = OS_DCACHE_ROUNDUP_ADDR(header_buffer);
         video_streamP = get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP,
                                    &videoDmaMesgBlock, &videoDmaMessageQ);
 
         // frameskip
         extern u64 playtime_us;
-        osSyncPrintf("(DISPTIME %lld)\n", disptime_us);
-        if (playtime_us != 0) {
+        // osSyncPrintf("(DISPTIME %lld)\n", disptime_us);
+        if (playtime_us != 0 && disptime_us != 0) {
             while (playtime_us > (disptime_us + (usec_per_frame * 2))) {
                 osSyncPrintf("(FRAMESKIP %lld)\n", disptime_us);
                 disptime_us += usec_per_frame;
@@ -188,17 +194,33 @@ void Main(void *video) {
             int status;
             // Process first half in the CPU
             hvqtask.t.flags = 0;
-            status = hvqm2DecodeSP1(hvqbuf, frame_format, &cfb[bufno][screen_offset],
+            char trap[500];
+            sprintf(trap, "DECODE %08X %d %08X %08X %08X %08X %08X\n",hvqbuf, frame_format, &cfb[bufno][screen_offset],
                                     &cfb[prev_bufno][screen_offset], hvqwork, &hvq_sparg,
                                     hvq_spfifo);
+            osSyncPrintf(trap);
+
+#ifdef RSP
+            status = hvqm2DecodeSP1(hvqbuf, frame_format, &cfb[bufno][screen_offset],
+#else
+            hvqm2Decode1(hvqbuf, frame_format, &cfb[bufno][screen_offset],
+#endif
+                                    &cfb[prev_bufno][screen_offset], hvqwork
+#ifdef RSP
+                                    , &hvq_sparg,
+                                    hvq_spfifo
+#endif
+                                    );
             osWritebackDCacheAll();
 
+#ifdef RSP
             // Process last half in the RSP
             if (status > 0) {
-                osInvalDCache((void *) cfb[bufno], sizeof cfb[bufno]);
+                osInvalDCache((void *) cfb[bufno], sizeof(cfb[bufno]));
                 osSpTaskStart(&hvqtask);
                 osRecvMesg(&spMesgQ, NULL, OS_MESG_BLOCK);
             }
+#endif
         }
 
         osWritebackDCacheAll();

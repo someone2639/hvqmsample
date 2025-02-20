@@ -83,7 +83,7 @@ SECTIONS
 
    BEGIN_SEG(hvqmdata, __romPos)
    {
-      BUILD_DIR/assets/sample.hvqm.o(.data);
+      BUILD_DIR/assets/dressup.hvqm.o(.data);
    }
    END_SEG(hvqmdata)
    /* Discard everything not specifically mentioned above. */
