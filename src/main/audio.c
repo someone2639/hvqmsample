@@ -77,7 +77,6 @@ void init_audio(void **streamp) {
 void process_audio(void **streamp) {
     osWritebackDCacheAll();
 
-    osSyncPrintf("AUD BUF %08X REAL SIZE %08X\n", PCMBUF_SIZE * sizeof(u16), currBuf->len * sizeof(u16));
     int result = osAiSetNextBuffer(currBuf->samples, ALIGN(currBuf->len * 2 * sizeof(u16), 0x100));
 
     if (result == 0) {
@@ -93,7 +92,6 @@ void AudioMain(void *arg) {
     void *streamp = args->streamp;
     register u32 audio_remain = args->remain;
     // WARNING: If sample rate is lower than 32000, emulators will slow down!
-    osSyncPrintf("SAMPLE RATE: %d\n", args->samples_per_sec);
     real_frequency = osAiSetFrequency(args->samples_per_sec);
 
     init_audio(&streamp);
