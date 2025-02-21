@@ -64,7 +64,7 @@ void Main(void *video) {
     // osViSwapBuffer(cfb[NUM_CFBs - 1]);
 
     // Fetch the HVQM2 header
-    dma_copy(&hvqm_header, video, sizeof(HVQM2Header));
+    dma_copy(&hvqm_header, video, sizeof(HVQM2Header), NULL);
 
     u32 total_frames = load32(hvqm_header.total_frames);
     u32 usec_per_frame = load32(hvqm_header.usec_per_frame);

@@ -54,46 +54,46 @@
 /*
  * Frame buffer specifications
  */
-#define NUM_CFBs	3	/* Number of frame buffers (2 or more; at least 3 recommended) */
+#define NUM_CFBs    3   /* Number of frame buffers (2 or more; at least 3 recommended) */
 
-#define	SCREEN_WD	320	/* Screen width [pixel] */
-#define	SCREEN_HT	240	/* Screen height [pixel] */
+#define SCREEN_WD   320 /* Screen width [pixel] */
+#define SCREEN_HT   240 /* Screen height [pixel] */
 
 #ifndef CFB_FORMAT
-#define CFB_FORMAT	1	/* Frame buffer format, 1: 16bit, 2: 32bit */
+#define CFB_FORMAT  1   /* Frame buffer format, 1: 16bit, 2: 32bit */
 #endif
 
 typedef u16 CFBPix;
-#define VIMODE	OS_VI_NTSC_LAN1
+#define VIMODE  OS_VI_NTSC_LAN1
 
 #define VIFEAT  (OS_VI_DIVOT_OFF | OS_VI_GAMMA_ON)
 
 /*
  * Frame buffer state flag 
  */
-#define CFB_FREE     0		/* Available */
-#define CFB_PRECIOUS (1<<0)	/* Constrained for decoding of next frame */
-#define CFB_SHOWING  (1<<1)	/* Waiting to display or displaying */
+#define CFB_FREE     0      /* Available */
+#define CFB_PRECIOUS (1<<0) /* Constrained for decoding of next frame */
+#define CFB_SHOWING  (1<<1) /* Waiting to display or displaying */
 
 /*
  * Audio DA specifications
  */
-#define  PCM_CHANNELS        2	/* Number of channels */
-#define  PCM_CHANNELS_SHIFT  1	/* log2(PCM_CHANNELS) */
-#define  PCM_ALIGN           2	/* Alignment of number of samples to send */
+#define  PCM_CHANNELS        2  /* Number of channels */
+#define  PCM_CHANNELS_SHIFT  1  /* log2(PCM_CHANNELS) */
+#define  PCM_ALIGN           2  /* Alignment of number of samples to send */
 #define  PCM_BYTES_PER_SAMPLE  (2 * PCM_CHANNELS) /* Number of bytes in one sample */
-#define  PCM_BYTES_PER_SAMPLE_SHIFT  2	/* log2(PCM_BYTES_PER_SAMPLE) */
+#define  PCM_BYTES_PER_SAMPLE_SHIFT  2  /* log2(PCM_BYTES_PER_SAMPLE) */
 
 /*
  * Audio record definitions
  */
-#define  AUDIO_SAMPLE_BITS	4
-#define  AUDIO_SAMPLES_MAX	(((AUDIO_RECORD_SIZE_MAX-sizeof(HVQM2Audio))*8/AUDIO_SAMPLE_BITS)+1) /* Maximum number of records per sample */
+#define  AUDIO_SAMPLE_BITS  4
+#define  AUDIO_SAMPLES_MAX  (((AUDIO_RECORD_SIZE_MAX-sizeof(HVQM2Audio))*8/AUDIO_SAMPLE_BITS)+1) /* Maximum number of records per sample */
 
 /*
  * PCM buffer specifications
  */
-#define  NUM_PCMBUFs	16	/* Number of PCM buffers (2 or more, at least 3 recommended) */
+#define  NUM_PCMBUFs    16  /* Number of PCM buffers (2 or more, at least 3 recommended) */
 #define  PCMBUF_SIZE     0x2000
 
 /*
@@ -117,7 +117,7 @@ typedef u16 CFBPix;
 #define MAIN_PRIORITY         10
 #define AUD_PRIORITY          14
 
-#define PI_COMMAND_QUEUE_SIZE	8
+#define PI_COMMAND_QUEUE_SIZE   8
 
 /*
  * in main.c
@@ -128,6 +128,7 @@ void Main(void *);
  * in system.c
  */
 void romcpy(void *dest, void *src, u32 len, s32 pri, OSIoMesg *mb, OSMesgQueue *mq);
+void dma_copy(void *dest, void *src, u32 len, OSIoMesg *msg);
 
 /*
  * in getrecord.c
@@ -154,11 +155,11 @@ typedef struct {
 extern HVQM2Header hvqm_header;
 
 // Buffers
-extern u16 hvqwork[];		/* Work buffer for HVQM2 decoder */
-extern u64 hvq_yieldbuf[];	/* RSP task yield buffer */
-extern HVQM2Info hvq_spfifo[];	/* Data area for HVQM2 microcode */
-extern u8 adpcmbuf[];		/* Buffer for audio records ADPCM) */
-extern u8 hvqbuf[];		/* Buffer for video records (HVQM2) */
+extern u16 hvqwork[];       /* Work buffer for HVQM2 decoder */
+extern u64 hvq_yieldbuf[];  /* RSP task yield buffer */
+extern HVQM2Info hvq_spfifo[];  /* Data area for HVQM2 microcode */
+extern u8 adpcmbuf[];       /* Buffer for audio records ADPCM) */
+extern u8 hvqbuf[];     /* Buffer for video records (HVQM2) */
 extern s16 pcmbuf[NUM_PCMBUFs][PCMBUF_SIZE]; /* PCM data buffer */
 extern CFBPix cfb[NUM_CFBs][SCREEN_WD*SCREEN_HT]; /* Image frame buffer */
 
