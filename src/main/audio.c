@@ -3,7 +3,6 @@
 #include <hvqm2dec.h>
 #include <adpcmdec.h>
 #include "system.h"
-#include "timekeeper.h"
 
 int next_pcmbufno = 0;
 int pcm_mod_samples = 0;

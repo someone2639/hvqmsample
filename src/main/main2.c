@@ -3,7 +3,6 @@
 #include <hvqm2dec.h>
 #include <adpcmdec.h>
 #include "system.h"
-#include "timekeeper.h"
 
 OSTask hvqtask;
 static OSMesgQueue spMesgQ;
@@ -121,13 +120,14 @@ void Main(void *video) {
     u32 audio_remain = total_audio_records;
 
 
+    AudThreadParams parms;
     if (total_audio_records != 0) {
-        AudThreadParams parms;
         parms.streamp = audio_streamP;
         parms.remain = audio_remain;
         parms.samples_per_sec = hvqm_header.samples_per_sec;
         osCreateThread(&audThread, AUD_THREAD_ID, AudioMain, &parms, audThreadStack + STACKSIZE / 8,
                        AUD_PRIORITY);
+        osStartThread(&audThread);
     }
 
     /*
@@ -149,6 +149,8 @@ void Main(void *video) {
     // Repetitive playback loop
     int prev_bufno = -1;
     int bufno = 0;
+
+    int i = 0;
 
     while (video_remain > 0) {
         // osSyncPrintf("vremain %d\n", video_remain);
@@ -173,6 +175,7 @@ void Main(void *video) {
                 video_streamP = get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP,
                                            &videoDmaMesgBlock, &videoDmaMessageQ);
                 video_remain--;
+                i++;
                 if (record_header->format == HVQM2_VIDEO_KEYFRAME) {
                     break;
                 }
@@ -238,9 +241,10 @@ void Main(void *video) {
         // Go to the process for next frame
         disptime_us += usec_per_frame;
         --video_remain;
+        i++;
     }
 
-    osSyncPrintf("VID PLAYBACK COMPLETE\n");
+    osSyncPrintf("VID PLAYBACK COMPLETE %d frames\n", i);
 
     while (1) { ; }
 }
