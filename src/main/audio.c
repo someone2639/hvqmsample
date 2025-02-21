@@ -7,11 +7,6 @@
 int next_pcmbufno = 0;
 int pcm_mod_samples = 0;
 
-#define AUDIO_DMA_MSG_SIZE 1
-static OSIoMesg audioDmaMesgBlock;
-static OSMesgQueue audioDmaMessageQ;
-static OSMesg audioDmaMessages[AUDIO_DMA_MSG_SIZE];
-
 #define AI_MSG_SIZE 2
 static OSMesgQueue aiMessageQ;
 static OSMesg aiMessages[AI_MSG_SIZE];
@@ -54,8 +49,7 @@ static u32 next_audio_record(void **streamp, void *pcmbuf) {
     HVQM2Audio *audio_headerP;
     u32 samples;
 
-    *streamp = get_record(&record_header, adpcmbuf, HVQM2_AUDIO, *streamp, &audioDmaMesgBlock,
-                               &audioDmaMessageQ);
+    *streamp = get_record(&record_header, adpcmbuf, HVQM2_AUDIO, *streamp);
 
     audio_headerP = (HVQM2Audio *) adpcmbuf;
     samples = load32(audio_headerP->samples);
@@ -69,7 +63,6 @@ void init_audio(void **streamp) {
     // TODO: init ring buffer and perform first 3 conversions
     osCreateMesgQueue(&aiMessageQ, aiMessages, AI_MSG_SIZE);
     osSetEventMesg(OS_EVENT_AI, &aiMessageQ, (OSMesg *) 1);
-    osCreateMesgQueue(&audioDmaMessageQ, audioDmaMessages, AUDIO_DMA_MSG_SIZE);
 
     bzero(pcmbuf, sizeof(pcmbuf));
 
@@ -84,7 +77,8 @@ void init_audio(void **streamp) {
 void process_audio(void **streamp) {
     osWritebackDCacheAll();
 
-    int result = osAiSetNextBuffer(currBuf->samples, PCMBUF_SIZE * sizeof(u16));
+    osSyncPrintf("AUD BUF %08X REAL SIZE %08X\n", PCMBUF_SIZE * sizeof(u16), currBuf->len * sizeof(u16));
+    int result = osAiSetNextBuffer(currBuf->samples, ALIGN(currBuf->len * 2 * sizeof(u16), 0x100));
 
     if (result == 0) {
         playtime_us += (((f32)currBuf->len / (f32)real_frequency) * 1000000.0f);
@@ -105,23 +99,12 @@ void AudioMain(void *arg) {
     init_audio(&streamp);
     
     while (1) {
-        extern OSMesgQueue viMessageQ;
         if (audio_remain != 0) {
             osSyncPrintf("    ");
-            extern u64 disptime_us;
-            // if (disptime_us != 0) {
-            //     while (playtime_us > disptime_us) {
-            //         osSyncPrintf("(ADESYNC %lld > %lld)\n", playtime_us, disptime_us);
-            //         osYieldThread();
-            //     }
-            // }
             osSyncPrintf("aremain %d\n", audio_remain);
             osSyncPrintf("PLAYTIME %lld\n", playtime_us);
             process_audio(&streamp);
             audio_remain--;
-            if (currBuf->len < 0x80) {
-                break;
-            }
         } else {
             break;
         }

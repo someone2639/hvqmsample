@@ -23,21 +23,6 @@ u16 hvqwork[(MAXWIDTH/8)*(MAXHEIGHT/4)*4] ALIGNED(0x100);
  */
 u8 hvqbuf[HVQ_DATASIZE_MAX] ALIGNED(0x100);
 
-/* PCM data buffer
- * 
- * (Note) pcmbuf[i] must have 8byte alignment.
- * Please set to an 8byte aligned address with the spec file.
- * (PCMBUF_SIZE is aligned with system.h)
- */
-s16 pcmbuf[NUM_PCMBUFs][PCMBUF_SIZE] ALIGNED(0x100);
-
-/*
- * Buffer for audio records (ADPCM data) read from the HVQM2 data.
- * (Note) Please locate at a 16byte aligned address with the spec file. 
- */
-u8 adpcmbuf[AUDIO_RECORD_SIZE_MAX] ALIGNED(0x100);
-
-
 /* Image frame buffer */
 CFBPix cfb[NUM_CFBs][SCREEN_WD*SCREEN_HT] ALIGNED(0x100);
 

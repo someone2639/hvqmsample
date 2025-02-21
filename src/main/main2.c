@@ -8,11 +8,6 @@ OSTask hvqtask;
 static OSMesgQueue spMesgQ;
 static OSMesg spMesgBuf;
 
-#define VIDEO_DMA_MSG_SIZE 1
-static OSIoMesg videoDmaMesgBlock;
-static OSMesgQueue videoDmaMessageQ;
-static OSMesg videoDmaMessages[VIDEO_DMA_MSG_SIZE];
-
 #define VI_MSG_SIZE 2
 OSMesgQueue viMessageQ;
 static OSMesg viMessages[VI_MSG_SIZE];
@@ -32,31 +27,6 @@ char *htable[] = {
     [HVQM2_VIDEO] = "VIDEO",
 };
 
-u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIoMesg *mb,
-               OSMesgQueue *mq) {
-    u16 record_type;
-    u32 record_size;
-    s32 pri;
-
-    // osSyncPrintf("[GETRECORD] %s\n", htable[type]);
-
-    pri = (type == HVQM2_AUDIO) ? OS_MESG_PRI_HIGH : OS_MESG_PRI_NORMAL;
-    for (;;) {
-        romcpy(headerbuf, stream, sizeof(HVQM2Record), pri, mb, mq);
-        stream += sizeof(HVQM2Record);
-        record_type = load16(headerbuf->type);
-        record_size = load32(headerbuf->size);
-        if (record_type == type)
-            break;
-        stream += record_size;
-    }
-
-    if (record_size > 0) {
-        romcpy(bodybuf, stream, record_size, pri, mb, mq);
-        stream += record_size;
-    }
-    return stream;
-}
 #define RSP
 u64 getTime() {
     static u64 last_time = 0;
@@ -78,8 +48,7 @@ void Main(void *video) {
     osCreateMesgQueue(&viMessageQ, viMessages, VI_MSG_SIZE);
     osViSetEvent(&viMessageQ, 0, 1);
 
-    // Create DMA message queue for the reading in of video records
-    osCreateMesgQueue(&videoDmaMessageQ, videoDmaMessages, VIDEO_DMA_MSG_SIZE);
+    init_dma();
 
     // Initialize the HVQM2 decoder
     // If using the RSP version of the decoder
@@ -106,8 +75,7 @@ void Main(void *video) {
     // osViSwapBuffer(cfb[NUM_CFBs - 1]);
 
     // Fetch the HVQM2 header
-    romcpy(&hvqm_header, video, sizeof(HVQM2Header), OS_MESG_PRI_NORMAL,
-           &videoDmaMesgBlock, &videoDmaMessageQ);
+    dma_copy(&hvqm_header, video, sizeof(HVQM2Header));
 
     u32 total_frames = load32(hvqm_header.total_frames);
     u32 usec_per_frame = load32(hvqm_header.usec_per_frame);
@@ -162,8 +130,7 @@ void Main(void *video) {
         /*
          * Fetch video record
          */
-        video_streamP = get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP,
-                                   &videoDmaMesgBlock, &videoDmaMessageQ);
+        video_streamP = get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP);
 
         // frameskip
         extern u64 playtime_us;
@@ -172,8 +139,7 @@ void Main(void *video) {
             while (playtime_us > (disptime_us + (usec_per_frame * 2))) {
                 osSyncPrintf("(FRAMESKIP %lld)\n", disptime_us);
                 disptime_us += usec_per_frame;
-                video_streamP = get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP,
-                                           &videoDmaMesgBlock, &videoDmaMessageQ);
+                video_streamP = get_record(record_header, hvqbuf, HVQM2_VIDEO, video_streamP);
                 video_remain--;
                 i++;
                 if (record_header->format == HVQM2_VIDEO_KEYFRAME) {

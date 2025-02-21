@@ -94,7 +94,7 @@ typedef u16 CFBPix;
  * PCM buffer specifications
  */
 #define  NUM_PCMBUFs	16	/* Number of PCM buffers (2 or more, at least 3 recommended) */
-#define  PCMBUF_SIZE     0x800
+#define  PCMBUF_SIZE     0x2000
 
 /*
  * Macro for loading multi-byte data from buffer holding data from stream 
@@ -116,8 +116,6 @@ typedef u16 CFBPix;
 #define IDLE_PRIORITY         10
 #define MAIN_PRIORITY         10
 #define AUD_PRIORITY          14
-#define TIMEKEEPER_PRIORITY   12
-#define DA_COUNTER_PRIORITY   13
 
 #define PI_COMMAND_QUEUE_SIZE	8
 
@@ -134,7 +132,7 @@ void romcpy(void *dest, void *src, u32 len, s32 pri, OSIoMesg *mb, OSMesgQueue *
 /*
  * in getrecord.c
  */
-u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream, OSIoMesg *mb, OSMesgQueue *mq);
+u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream);
 
 /*
  * in cfbkeep.c
