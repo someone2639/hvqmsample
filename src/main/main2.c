@@ -27,13 +27,6 @@ char *htable[] = {
     [HVQM2_VIDEO] = "VIDEO",
 };
 
-#define RSP
-u64 getTime() {
-    static u64 last_time = 0;
-
-    return OS_CYCLES_TO_USEC(osGetTime() - last_time);
-}
-
 u64 disptime_us = 0;
 
 void Main(void *video) {
@@ -53,11 +46,7 @@ void Main(void *video) {
     // Initialize the HVQM2 decoder
     // If using the RSP version of the decoder
     // also setup the RSP task data next
-#ifdef RSP
     hvqm2InitSP1(0xff);
-#else
-    hvqm2Init1(0xff);
-#endif
     hvqtask.t.ucode = (u64 *) hvqm2sp1TextStart;
     hvqtask.t.ucode_size = (int) hvqm2sp1TextEnd - (int) hvqm2sp1TextStart;
     hvqtask.t.ucode_data = (u64 *) hvqm2sp1DataStart;
@@ -108,11 +97,7 @@ void Main(void *video) {
     screen_offset = SCREEN_WD * v_offset + h_offset;
 
     // Setup the HVQM2 image decoder
-#ifdef RSP
     hvqm2SetupSP1(&hvqm_header, SCREEN_WD);
-#else
-    hvqm2Setup1(&hvqm_header, SCREEN_WD);
-#endif
 
     // Repetitive playback loop
     int prev_bufno = -1;
@@ -163,33 +148,20 @@ void Main(void *video) {
             int status;
             // Process first half in the CPU
             hvqtask.t.flags = 0;
-            char trap[500];
-            sprintf(trap, "DECODE %08X %d %08X %08X %08X %08X %08X\n",hvqbuf, frame_format, &cfb[bufno][screen_offset],
-                                    &cfb[prev_bufno][screen_offset], hvqwork, &hvq_sparg,
-                                    hvq_spfifo);
-            osSyncPrintf(trap);
 
-#ifdef RSP
             status = hvqm2DecodeSP1(hvqbuf, frame_format, &cfb[bufno][screen_offset],
-#else
-            hvqm2Decode1(hvqbuf, frame_format, &cfb[bufno][screen_offset],
-#endif
                                     &cfb[prev_bufno][screen_offset], hvqwork
-#ifdef RSP
                                     , &hvq_sparg,
                                     hvq_spfifo
-#endif
                                     );
             osWritebackDCacheAll();
 
-#ifdef RSP
             // Process last half in the RSP
             if (status > 0) {
                 osInvalDCache((void *) cfb[bufno], sizeof(cfb[bufno]));
                 osSpTaskStart(&hvqtask);
                 osRecvMesg(&spMesgQ, NULL, OS_MESG_BLOCK);
             }
-#endif
         }
 
         osWritebackDCacheAll();
