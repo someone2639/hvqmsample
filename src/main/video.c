@@ -32,6 +32,11 @@ VideoRing *currVBuf;
 
 u32 video_remain = 0;
 u32 usec_per_frame = 0;
+u32 frames_elapsed = 0;
+
+u32 video_playing() {
+    return (playtime_us != 0) && (disptime_us != 0) && (frames_elapsed > NUM_CFBs);
+}
 
 void init_video(void **streamp, u32 offset) {
     for (int i = 0; i < NUM_CFBs; i++) {
@@ -88,7 +93,7 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
     u32 skipped_frames = 0;
 
     // Frameskip
-    if (playtime_us != 0 && disptime_us != 0) {
+    if (video_playing()) {
         // Only skip if 2 audio frames behind
         if (playtime_us > (starttime_us + (usec_per_frame * 2))) {
             // Skip only as far as needed to sync up again, or to the next keyframe.
@@ -96,7 +101,8 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
             while (playtime_us > starttime_us) {
                 skip_record(record_size, streamp);
                 starttime_us += usec_per_frame;
-                skipped_frames ++;
+                skipped_frames++;
+                frames_elapsed++;
                 record_size = get_record(&record_header, HVQM2_VIDEO, streamp);
                 video_remain--;
                 if (record_header.format == HVQM2_VIDEO_KEYFRAME) {
@@ -145,12 +151,28 @@ void decode_video(VideoRing *vbuf) {
     }
 }
 
+// void hold_all_frames() {
+//     for (int i = 0; i < NUM_CFBs; i++) {
+//         vbuffer[i].endtime_us += usec_per_frame;
+//     }
+// }
+
 void show_next_frame(void **streamp) {
+    // if (video_playing()) {
+    //     if (disptime_us > (playtime_us + (usec_per_frame * 10))) {
+    //         // while (disptime_us > playtime_us) {
+    //         osSyncPrintf("HOLDING V%llu A%llu\n", disptime_us, playtime_us);
+    //         hold_all_frames();
+    //         osYieldThread();
+    //         // }
+    //     }
+    // }
     if (currVBuf->endtime_us <= disptime_us) {
         currVBuf = currVBuf->next;
         load_video_frame(streamp, currVBuf);
         decode_video(currVBuf);
         --video_remain;
+        frames_elapsed++;
     }
     if (currVBuf->format != HVQM2_VIDEO_HOLD) {
         osViSwapBuffer(currVBuf->cfb);

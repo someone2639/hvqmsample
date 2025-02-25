@@ -52,6 +52,7 @@ void Main(void *video) {
 
     // Fetch the HVQM2 header
     dma_copy(&hvqm_header, video, sizeof(HVQM2Header), NULL);
+    verify_hvqm();
 
     u32 total_frames = load32(hvqm_header.total_frames);
     extern u32 usec_per_frame;
