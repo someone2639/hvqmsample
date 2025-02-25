@@ -1,0 +1,10 @@
+# Modern HVQM Sample
+Modification/Partial rewrite of the N64SDK `hvqmsample` demo.
+
+## Goals
+ - Decode faster than the original demo
+ - Allow the easiest possible integration into other N64 games and ROM Hacks
+ - Have both video playback functionality and "render-to-texture" functionality
+
+## Why not just use MPEG-1 or -2?
+HVQM is in a weird spot. MPEG encodes at basically real time through `ffmpeg` from any source format, while HVQM gets encoded at potentially tens of seconds per frame (somebody _please_ make `hvqm2enc.exe` faster), and requires a fully uncompressed AVI input file (which basically only VirtualDub2 supports). The average HVQM video's size is also probably worse than what can be achieved with modern tech. HVQM uses a proprietary RSP accelerator microcode, which is annoying (if at all possible) to integrate into existing task schedulers. Despite all this, HVQM is actually the most compatible N64 video format. It works on many popular emulators and real hardware at full resolution and at basically full speed, therefore it's worth using.
