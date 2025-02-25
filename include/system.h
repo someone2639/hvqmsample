@@ -167,8 +167,7 @@ extern CFBPix cfb[NUM_CFBs][SCREEN_WD*SCREEN_HT]; /* Image frame buffer */
 extern void init_dma();
 extern void init_hvqm_task();
 extern void init_video(void **, u32);
-extern void process_video(void**);
-extern void show_next_frame();
+extern void show_next_frame(void **);
 
 /*
  *  Address of HVQM2 data

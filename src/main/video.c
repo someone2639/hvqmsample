@@ -12,16 +12,15 @@ HVQM2Arg hvq_sparg; // Parameter for the HVQM2 microcode
 typedef struct VideoRing {
     struct VideoRing *next;
     struct VideoRing *prev;
-    // HVQM2Arg arg;
     int status;
     u16 format;
     CFBPix *cfb;
     CFBPix *drawbuf;
-    u64 starttime_us;
     u64 endtime_us;
 } VideoRing;
 
-void process_video(void **streamp);
+void load_video_frame(void **streamp, VideoRing *vbuf);
+void decode_video(VideoRing *vbuf);
 extern u64 playtime_us, disptime_us;
 
 VideoRing vbuffer[NUM_CFBs] = {
@@ -39,10 +38,16 @@ void init_video(void **streamp, u32 offset) {
         vbuffer[i].cfb = &cfb[i][0];
         bzero(cfb[i], sizeof(cfb[i]));
         vbuffer[i].drawbuf = &cfb[i][offset];
-        currVBuf = &vbuffer[i];
-        process_video(streamp);
     }
 
+    for (int i = 0; i < NUM_CFBs - 1; i++) {
+        load_video_frame(streamp, &vbuffer[i]);
+        decode_video(&vbuffer[i]);
+    }
+
+    osViSwapBuffer(vbuffer[0].cfb);
+
+    disptime_us = 0;
     currVBuf = &vbuffer[0];
 }
 
@@ -69,16 +74,16 @@ void init_hvqm_task() {
     hvqtask.t.yield_data_size = HVQM2_YIELD_DATA_SIZE;
 }
 
-void process_video(void **streamp) {
+
+// Loads the data required to decode a video frame
+void load_video_frame(void **streamp, VideoRing *vbuf) {
     HVQM2Record record_header ALIGNED(16);
-    /*
-     * Fetch video record
-     */
+    // Fetch video record
     get_record(&record_header, hvqbuf, HVQM2_VIDEO, streamp);
 
-    currVBuf->format = load16(record_header.format);
-    currVBuf->starttime_us = disptime_us - usec_per_frame;
+    vbuf->format = load16(record_header.format);
     // frameskip
+    osSyncPrintf("AUD %lld DISP %lld UPF %u\n", playtime_us, disptime_us, usec_per_frame);
     if (playtime_us != 0 && disptime_us != 0) {
         while (playtime_us > (disptime_us + (usec_per_frame * 2))) {
             osSyncPrintf("(FRAMESKIP %lld)\n", disptime_us);
@@ -95,45 +100,51 @@ void process_video(void **streamp) {
         if (video_remain == 0) {
             return;
         } else {
-            currVBuf->format = load16(record_header.format);
+            vbuf->format = load16(record_header.format);
         }
     }
 
-    currVBuf->endtime_us = disptime_us;
+    vbuf->endtime_us = disptime_us + usec_per_frame;
+}
 
-
+// Actually decodes the frame
+void decode_video(VideoRing *vbuf) {
     // Decode the compressed image data and expand it in the frame buffer
-    if (currVBuf->format == HVQM2_VIDEO_HOLD) {
+    if (vbuf->format == HVQM2_VIDEO_HOLD) {
        // do nothing
+        vbuf->endtime_us += usec_per_frame;
     } else {
         // Process first half in the CPU
         hvqtask.t.flags = 0;
 
-        currVBuf->status = hvqm2DecodeSP1(hvqbuf, currVBuf->format, currVBuf->drawbuf,
-                                currVBuf->prev->drawbuf, hvqwork,
+        vbuf->status = hvqm2DecodeSP1(hvqbuf, vbuf->format, vbuf->drawbuf,
+                                vbuf->prev->drawbuf, hvqwork,
                                 &hvq_sparg, hvq_spfifo
                                 );
         osWritebackDCacheAll();
 
         // Process last half in the RSP
-        if (currVBuf->status > 0) {
-            osInvalDCache((void *) currVBuf->cfb, SCREEN_WD * SCREEN_HT * sizeof(CFBPix));
+        if (vbuf->status > 0) {
+            osInvalDCache((void *) vbuf->cfb, SCREEN_WD * SCREEN_HT * sizeof(CFBPix));
             osSpTaskStart(&hvqtask);
             osRecvMesg(&spMesgQ, NULL, OS_MESG_BLOCK);
         }
     }
 }
 
-void VideoMain(void *arg) {
-
-}
-
-
-void show_next_frame() {
+void show_next_frame(void **streamp) {
+    if (currVBuf->endtime_us <= disptime_us) {
+        currVBuf = currVBuf->next;
+        disptime_us += usec_per_frame;
+        load_video_frame(streamp, currVBuf);
+        decode_video(currVBuf);
+    }
     if (currVBuf->format != HVQM2_VIDEO_HOLD) {
         osViSwapBuffer(currVBuf->cfb);
     }
-    if (currVBuf->endtime_us <= disptime_us) {
-        currVBuf = currVBuf->next;
-    }
+}
+
+// Currently just a wrapper
+void VideoMain(void **streamp) {
+    show_next_frame(streamp);
 }

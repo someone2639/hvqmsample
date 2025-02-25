@@ -69,11 +69,7 @@ void Main(void *video) {
     init_video(&video_streamP, screen_offset);
 
     while (video_remain > 0) {
-        process_video(&video_streamP);
-
-        // osWritebackDCacheAll();
-
-        show_next_frame();
+        VideoMain(&video_streamP);
 
         osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
         // Go to the process for next frame

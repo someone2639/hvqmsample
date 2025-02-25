@@ -17,8 +17,6 @@ typedef struct AudioRing {
     struct AudioRing *next;
     struct AudioRing *prev;
     u32 len;
-    u32 open;
-    u64 starttime_us;
     u64 endtime_us;
     s16 (*samples)[PCMBUF_SIZE];
 } AudioRing;
@@ -68,7 +66,6 @@ static u32 next_audio_record(void **streamp, void *pcmbuf) {
 
 void ring_update(void **streamp, AudioRing *abuf) {
     abuf->len = next_audio_record(streamp, abuf->samples);
-    abuf->starttime_us = playtime_us;
     abuf->endtime_us = playtime_us + samples2usec(abuf)/2;
 }
 
@@ -83,9 +80,7 @@ void init_audio(void **streamp) {
         rbuffer[(i + 1) % NUM_PCMBUFs].prev = &rbuffer[i];
         rbuffer[i].samples = &pcmbuf[i];
         ring_update(streamp, &rbuffer[i]);
-        playtime_us += samples2usec(&rbuffer[i]);
-
-        osSyncPrintf("RBUF %d START %lld END %lld\n", i, rbuffer[i].starttime_us, rbuffer[i].endtime_us);
+        playtime_us += samples2usec(&rbuffer[i]) / 2;
     }
 
     playtime_us = 0;
@@ -98,7 +93,7 @@ void process_audio(void **streamp) {
     int result = osAiSetNextBuffer(currBuf->samples, ALIGN(currBuf->len * 2 * sizeof(u16), 0x100));
 
     if (result == 0) {
-        playtime_us += samples2usec(currBuf);
+        playtime_us += samples2usec(currBuf) / 2;
 
         if (playtime_us > currBuf->endtime_us) {
             currBuf = currBuf->next;
