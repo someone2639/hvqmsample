@@ -17,15 +17,17 @@ typedef struct VideoRing {
     u16 format;
     CFBPix *cfb;
     CFBPix *drawbuf;
+    u64 starttime_us;
+    u64 endtime_us;
 } VideoRing;
 
 void process_video(void **streamp);
+extern u64 playtime_us, disptime_us;
 
 VideoRing vbuffer[NUM_CFBs] = {
     {.next = &vbuffer[1], .prev = &vbuffer[NUM_CFBs - 1]},
     {.next = &vbuffer[2], .prev = &vbuffer[0]},
-    {.next = &vbuffer[3], .prev = &vbuffer[1]},
-    {.next = &vbuffer[0], .prev = &vbuffer[2]},
+    {.next = &vbuffer[0], .prev = &vbuffer[1]},
 };
 VideoRing *currVBuf;
 
@@ -74,9 +76,8 @@ void process_video(void **streamp) {
     get_record(&record_header, hvqbuf, HVQM2_VIDEO, streamp);
 
     currVBuf->format = load16(record_header.format);
-
+    currVBuf->starttime_us = disptime_us - usec_per_frame;
     // frameskip
-    extern u64 playtime_us, disptime_us;
     if (playtime_us != 0 && disptime_us != 0) {
         while (playtime_us > (disptime_us + (usec_per_frame * 2))) {
             osSyncPrintf("(FRAMESKIP %lld)\n", disptime_us);
@@ -96,6 +97,8 @@ void process_video(void **streamp) {
             currVBuf->format = load16(record_header.format);
         }
     }
+
+    currVBuf->endtime_us = disptime_us;
 
 
     // Decode the compressed image data and expand it in the frame buffer
@@ -126,6 +129,9 @@ void VideoMain(void *arg) {
 
 
 void show_next_frame() {
+    if (currVBuf->endtime_us > disptime_us) {
+        return;
+    }
     if (currVBuf->format != HVQM2_VIDEO_HOLD) {
         osViSwapBuffer(currVBuf->cfb);
         currVBuf = currVBuf->next;

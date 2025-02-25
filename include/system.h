@@ -54,7 +54,7 @@
 /*
  * Frame buffer specifications
  */
-#define NUM_CFBs    4   /* Number of frame buffers (2 or more; at least 3 recommended) */
+#define NUM_CFBs    3   /* Number of frame buffers (2 or more; at least 3 recommended) */
 
 #define SCREEN_WD   320 /* Screen width [pixel] */
 #define SCREEN_HT   240 /* Screen height [pixel] */
