@@ -37,6 +37,7 @@ u32 usec_per_frame = 0;
 void init_video(void **streamp, u32 offset) {
     for (int i = 0; i < NUM_CFBs; i++) {
         vbuffer[i].cfb = &cfb[i][0];
+        bzero(cfb[i], sizeof(cfb[i]));
         vbuffer[i].drawbuf = &cfb[i][offset];
         currVBuf = &vbuffer[i];
         process_video(streamp);
@@ -84,7 +85,7 @@ void process_video(void **streamp) {
             disptime_us += usec_per_frame;
             get_record(&record_header, hvqbuf, HVQM2_VIDEO, streamp);
             video_remain--;
-            if (currVBuf->format == HVQM2_VIDEO_KEYFRAME) {
+            if (record_header.format == HVQM2_VIDEO_KEYFRAME) {
                 break;
             }
             if (video_remain == 0) {
