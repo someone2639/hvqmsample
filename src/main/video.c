@@ -85,6 +85,8 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
 
     u32 starttime_us = disptime_us;
 
+    u32 skipped_frames = 0;
+
     // Frameskip
     if (playtime_us != 0 && disptime_us != 0) {
         // Only skip if 2 audio frames behind
@@ -93,8 +95,8 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
             //  Whichever comes first.
             while (playtime_us > starttime_us) {
                 skip_record(record_size, streamp);
-                osSyncPrintf("(FRAMESKIP %lld)\n", starttime_us);
                 starttime_us += usec_per_frame;
+                skipped_frames ++;
                 record_size = get_record(&record_header, HVQM2_VIDEO, streamp);
                 video_remain--;
                 if (record_header.format == HVQM2_VIDEO_KEYFRAME) {
@@ -105,6 +107,7 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
                     break;
                 }
             }
+            osSyncPrintf("(SKIPPED %d FRAMES)\n", skipped_frames);
         }
         if (video_remain == 0) {
             return;
