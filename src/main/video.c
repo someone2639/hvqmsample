@@ -130,11 +130,10 @@ void VideoMain(void *arg) {
 
 
 void show_next_frame() {
-    if (currVBuf->endtime_us > disptime_us) {
-        return;
-    }
     if (currVBuf->format != HVQM2_VIDEO_HOLD) {
         osViSwapBuffer(currVBuf->cfb);
+    }
+    if (currVBuf->endtime_us <= disptime_us) {
         currVBuf = currVBuf->next;
     }
 }

@@ -17,10 +17,12 @@ typedef struct AudioRing {
     struct AudioRing *next;
     u32 len;
     u32 open;
+    u64 starttime_us;
+    u64 endtime_us;
     s16 (*samples)[PCMBUF_SIZE];
 } AudioRing;
 
-AudioRing rbuffer[] = {
+AudioRing rbuffer[NUM_PCMBUFs] = {
     {.next = &rbuffer[1]},
     {.next = &rbuffer[2]},
     {.next = &rbuffer[3]},
@@ -43,6 +45,10 @@ AudioRing *currBuf;
 
 u64 playtime_us = 0;
 u32 real_frequency = 0;
+
+static u32 samples2usec(AudioRing *buf) {
+    return (((f32)buf->len / (f32)real_frequency) * 1000000.0f);
+}
 
 static u32 next_audio_record(void **streamp, void *pcmbuf) {
     HVQM2Record record_header __attribute__((aligned(16)));
@@ -69,6 +75,10 @@ void init_audio(void **streamp) {
     for (int i = 0; i < NUM_PCMBUFs; i++) {
         rbuffer[i].samples = &pcmbuf[i];
         rbuffer[i].len = next_audio_record(streamp, rbuffer[i].samples);
+        rbuffer[i].starttime_us = playtime_us + (i * samples2usec(&rbuffer[i])/2);
+        rbuffer[i].endtime_us = playtime_us + ((i+1) * samples2usec(&rbuffer[i])/2);
+
+        osSyncPrintf("RBUF %d START %lld END %lld\n", i, rbuffer[i].starttime_us, rbuffer[i].endtime_us);
     }
 
     currBuf = &rbuffer[0];
@@ -80,9 +90,14 @@ void process_audio(void **streamp) {
     int result = osAiSetNextBuffer(currBuf->samples, ALIGN(currBuf->len * 2 * sizeof(u16), 0x100));
 
     if (result == 0) {
-        playtime_us += (((f32)currBuf->len / (f32)real_frequency) * 1000000.0f);
-        currBuf = currBuf->next;
-        currBuf->len = next_audio_record(streamp, currBuf->samples);
+        playtime_us += samples2usec(currBuf);
+
+        if (playtime_us > currBuf->endtime_us) {
+            currBuf = currBuf->next;
+            currBuf->len = next_audio_record(streamp, currBuf->samples);
+            currBuf->starttime_us = playtime_us;
+            currBuf->endtime_us = playtime_us + samples2usec(currBuf)/2;
+        }
         osRecvMesg(&aiMessageQ, NULL, OS_MESG_BLOCK);
     }
 }
