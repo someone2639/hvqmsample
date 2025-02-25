@@ -20,6 +20,22 @@ extern void VideoMain(void *arg);
 
 u64 disptime_us = 0;
 
+void panic() {
+    while (1);
+}
+
+void verify_hvqm() {
+    if (hvqm_header.max_sp_packets > (HVQ_SPFIFO_SIZE / sizeof(HVQM2Info))) {
+        osSyncPrintf("HVQ_SPFIFO_SIZE must be at least %d\n", hvqm_header.max_sp_packets);
+        panic();
+    }
+
+    if (hvqm_header.max_audio_record_size > (AUDIO_RECORD_SIZE_MAX)) {
+        osSyncPrintf("AUDIO_RECORD_SIZE_MAX must be at least %d\n", hvqm_header.max_audio_record_size);
+        panic();
+    }
+}
+
 void Main(void *video) {
     int h_offset, v_offset; // Position of image display
     int screen_offset;      // Number of pixels from start of frame buffer to display position

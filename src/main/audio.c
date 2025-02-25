@@ -46,7 +46,7 @@ u64 playtime_us = 0;
 u32 real_frequency = 0;
 
 static u32 samples2usec(AudioRing *buf) {
-    return (((f32)buf->len / (f32)real_frequency) * 1000000.0f);
+    return (((f32)buf->len / (f32)real_frequency) * 1000000.0f) * 2;
 }
 
 static u32 next_audio_record(void **streamp, void *pcmbuf) {
@@ -54,7 +54,8 @@ static u32 next_audio_record(void **streamp, void *pcmbuf) {
     HVQM2Audio *audio_headerP;
     u32 samples;
 
-    get_record(&record_header, adpcmbuf, HVQM2_AUDIO, streamp);
+    u32 size = get_record(&record_header, HVQM2_AUDIO, streamp);
+    load_record(size, HVQM2_AUDIO, adpcmbuf, streamp);
 
     audio_headerP = (HVQM2Audio *) adpcmbuf;
     samples = load32(audio_headerP->samples);
@@ -92,9 +93,8 @@ void process_audio(void **streamp) {
 
     int result = osAiSetNextBuffer(currBuf->samples, ALIGN(currBuf->len * 2 * sizeof(u16), 0x100));
 
+    playtime_us += samples2usec(currBuf);
     if (result == 0) {
-        playtime_us += samples2usec(currBuf) / 2;
-
         if (playtime_us > currBuf->endtime_us) {
             currBuf = currBuf->next;
             ring_update(streamp, currBuf->prev);
@@ -108,15 +108,13 @@ void AudioMain(void *arg) {
     void *streamp = args->streamp;
     register u32 audio_remain = args->remain;
     // WARNING: If sample rate is lower than 32000, emulators will slow down!
+    // TODO: Turn into an audio task using aspMain to resample all audio to 32k
     real_frequency = osAiSetFrequency(args->samples_per_sec);
 
     init_audio(&streamp);
     
     while (1) {
         if (audio_remain != 0) {
-            // osSyncPrintf("    ");
-            // osSyncPrintf("aremain %d\n", audio_remain);
-            // osSyncPrintf("PLAYTIME %lld\n", playtime_us);
             process_audio(&streamp);
             audio_remain--;
         } else {

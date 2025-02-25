@@ -78,23 +78,32 @@ void init_hvqm_task() {
 // Loads the data required to decode a video frame
 void load_video_frame(void **streamp, VideoRing *vbuf) {
     HVQM2Record record_header ALIGNED(16);
-    // Fetch video record
-    get_record(&record_header, hvqbuf, HVQM2_VIDEO, streamp);
+    // Get the next video record
+    u32 record_size = get_record(&record_header, HVQM2_VIDEO, streamp);
 
     vbuf->format = load16(record_header.format);
-    // frameskip
-    osSyncPrintf("AUD %lld DISP %lld UPF %u\n", playtime_us, disptime_us, usec_per_frame);
+
+    u32 starttime_us = disptime_us;
+
+    // Frameskip
     if (playtime_us != 0 && disptime_us != 0) {
-        while (playtime_us > (disptime_us + (usec_per_frame * 2))) {
-            osSyncPrintf("(FRAMESKIP %lld)\n", disptime_us);
-            disptime_us += usec_per_frame;
-            get_record(&record_header, hvqbuf, HVQM2_VIDEO, streamp);
-            video_remain--;
-            if (record_header.format == HVQM2_VIDEO_KEYFRAME) {
-                break;
-            }
-            if (video_remain == 0) {
-                break;
+        // Only skip if 2 audio frames behind
+        if (playtime_us > (starttime_us + (usec_per_frame * 2))) {
+            // Skip only as far as needed to sync up again, or to the next keyframe.
+            //  Whichever comes first.
+            while (playtime_us > starttime_us) {
+                skip_record(record_size, streamp);
+                osSyncPrintf("(FRAMESKIP %lld)\n", starttime_us);
+                starttime_us += usec_per_frame;
+                record_size = get_record(&record_header, HVQM2_VIDEO, streamp);
+                video_remain--;
+                if (record_header.format == HVQM2_VIDEO_KEYFRAME) {
+                    osSyncPrintf("(keyframed)\n");
+                    break;
+                }
+                if (video_remain == 0) {
+                    break;
+                }
             }
         }
         if (video_remain == 0) {
@@ -103,8 +112,9 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
             vbuf->format = load16(record_header.format);
         }
     }
+    load_record(record_size, HVQM2_VIDEO, hvqbuf, streamp);
 
-    vbuf->endtime_us = disptime_us + usec_per_frame;
+    vbuf->endtime_us = starttime_us + usec_per_frame;
 }
 
 // Actually decodes the frame

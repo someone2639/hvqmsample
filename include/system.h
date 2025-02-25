@@ -110,9 +110,6 @@ typedef u16 CFBPix;
 #define AUD_THREAD_ID          3
 #define FAULT_THREAD_ID        4
 
-#define TIMEKEEPER_THREAD_ID   3
-#define DA_COUNTER_THREAD_ID   4
-
 #define IDLE_PRIORITY         10
 #define MAIN_PRIORITY         10
 #define AUD_PRIORITY          14
@@ -125,26 +122,13 @@ typedef u16 CFBPix;
 void Main(void *);
 
 /*
- * in system.c
+ * in memory.c
  */
 void romcpy(void *dest, void *src, u32 len, s32 pri, OSIoMesg *mb, OSMesgQueue *mq);
 void dma_copy(void *dest, void *src, u32 len, OSIoMesg *msg);
-
-/*
- * in getrecord.c
- */
-void get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, void **stream);
-
-/*
- * in cfbkeep.c
- */
-extern u32 cfb_status[NUM_CFBs];
-
-void init_cfb(void);
-void keep_cfb(int cfbno);
-void release_cfb(int cfbno);
-void release_all_cfb(void);
-int get_cfb();
+u32 get_record(HVQM2Record *headerbuf, u16 type, void **stream);
+void load_record(u32 record_size, u16 type, void *bodybuf, void **streamp);
+void skip_record(u32 record_size, void **streamp);
 extern void bzero(void *s, size_t n);
 
 typedef struct {
