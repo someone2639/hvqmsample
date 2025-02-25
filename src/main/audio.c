@@ -15,6 +15,7 @@ static ADPCMstate adpcm_state;
 
 typedef struct AudioRing {
     struct AudioRing *next;
+    struct AudioRing *prev;
     u32 len;
     u32 open;
     u64 starttime_us;
@@ -65,6 +66,12 @@ static u32 next_audio_record(void **streamp, void *pcmbuf) {
     return samples;
 }
 
+void ring_update(void **streamp, AudioRing *abuf) {
+    abuf->len = next_audio_record(streamp, abuf->samples);
+    abuf->starttime_us = playtime_us;
+    abuf->endtime_us = playtime_us + samples2usec(abuf)/2;
+}
+
 void init_audio(void **streamp) {
     // TODO: init ring buffer and perform first 3 conversions
     osCreateMesgQueue(&aiMessageQ, aiMessages, AI_MSG_SIZE);
@@ -73,14 +80,15 @@ void init_audio(void **streamp) {
     bzero(pcmbuf, sizeof(pcmbuf));
 
     for (int i = 0; i < NUM_PCMBUFs; i++) {
+        rbuffer[(i + 1) % NUM_PCMBUFs].prev = &rbuffer[i];
         rbuffer[i].samples = &pcmbuf[i];
-        rbuffer[i].len = next_audio_record(streamp, rbuffer[i].samples);
-        rbuffer[i].starttime_us = playtime_us + (i * samples2usec(&rbuffer[i])/2);
-        rbuffer[i].endtime_us = playtime_us + ((i+1) * samples2usec(&rbuffer[i])/2);
+        ring_update(streamp, &rbuffer[i]);
+        playtime_us += samples2usec(&rbuffer[i]);
 
         osSyncPrintf("RBUF %d START %lld END %lld\n", i, rbuffer[i].starttime_us, rbuffer[i].endtime_us);
     }
 
+    playtime_us = 0;
     currBuf = &rbuffer[0];
 }
 
@@ -94,9 +102,7 @@ void process_audio(void **streamp) {
 
         if (playtime_us > currBuf->endtime_us) {
             currBuf = currBuf->next;
-            currBuf->len = next_audio_record(streamp, currBuf->samples);
-            currBuf->starttime_us = playtime_us;
-            currBuf->endtime_us = playtime_us + samples2usec(currBuf)/2;
+            ring_update(streamp, currBuf->prev);
         }
         osRecvMesg(&aiMessageQ, NULL, OS_MESG_BLOCK);
     }
