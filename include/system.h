@@ -54,7 +54,7 @@
 /*
  * Frame buffer specifications
  */
-#define NUM_CFBs    3   /* Number of frame buffers (2 or more; at least 3 recommended) */
+#define NUM_CFBs    4   /* Number of frame buffers (2 or more; at least 3 recommended) */
 
 #define SCREEN_WD   320 /* Screen width [pixel] */
 #define SCREEN_HT   240 /* Screen height [pixel] */
@@ -133,7 +133,7 @@ void dma_copy(void *dest, void *src, u32 len, OSIoMesg *msg);
 /*
  * in getrecord.c
  */
-u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream);
+void get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, void **stream);
 
 /*
  * in cfbkeep.c
@@ -145,6 +145,7 @@ void keep_cfb(int cfbno);
 void release_cfb(int cfbno);
 void release_all_cfb(void);
 int get_cfb();
+extern void bzero(void *s, size_t n);
 
 typedef struct {
     void *streamp; // ptr to first aud record
@@ -155,13 +156,19 @@ typedef struct {
 extern HVQM2Header hvqm_header;
 
 // Buffers
-extern u16 hvqwork[];       /* Work buffer for HVQM2 decoder */
+extern u16 hvqwork[(MAXWIDTH/8)*(MAXHEIGHT/4)*4];       /* Work buffer for HVQM2 decoder */
 extern u64 hvq_yieldbuf[];  /* RSP task yield buffer */
 extern HVQM2Info hvq_spfifo[];  /* Data area for HVQM2 microcode */
 extern u8 adpcmbuf[];       /* Buffer for audio records ADPCM) */
 extern u8 hvqbuf[];     /* Buffer for video records (HVQM2) */
 extern s16 pcmbuf[NUM_PCMBUFs][PCMBUF_SIZE]; /* PCM data buffer */
 extern CFBPix cfb[NUM_CFBs][SCREEN_WD*SCREEN_HT]; /* Image frame buffer */
+
+extern void init_dma();
+extern void init_hvqm_task();
+extern void init_video(void **, u32);
+extern void process_video(void**);
+extern void show_next_frame();
 
 /*
  *  Address of HVQM2 data

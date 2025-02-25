@@ -26,31 +26,30 @@ void init_dma() {
     audioIOMesg.hdr.retQueue = &audDMAMessageQ;
 }
 
-u8 *get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, u8 *stream) {
+void get_record(HVQM2Record *headerbuf, void *bodybuf, u16 type, void **stream) {
     u16 record_type;
     u32 record_size;
     OSIoMesg *mb;
 
     mb = (type == HVQM2_AUDIO) ? &audioIOMesg : &dmaIOMesg;
     for (;;) {
-        dma_copy(headerbuf, stream, sizeof(HVQM2Record), mb);
-        stream += sizeof(HVQM2Record);
+        dma_copy(headerbuf, *stream, sizeof(HVQM2Record), mb);
+        *stream += sizeof(HVQM2Record);
         record_type = load16(headerbuf->type);
         record_size = load32(headerbuf->size);
         if (record_type == type)
             break;
-        stream += record_size;
+        *stream += record_size;
     }
 
     if (record_size > 0) {
-        dma_copy(bodybuf, stream, record_size, mb);
-        stream += record_size;
+        dma_copy(bodybuf, *stream, record_size, mb);
+        *stream += record_size;
     }
-    return stream;
 }
 
 void dma_copy(void *dest, void *src, u32 len, OSIoMesg *msg) {
-    osSyncPrintf("    [ROMCPY] %08X <- [%08X, %08X]\n", dest, src, len);
+    // osSyncPrintf("    [ROMCPY] %08X <- [%08X, %08X]\n", dest, src, len);
     bzero(dest, len);
     osInvalDCache(dest, len); 
 

@@ -13,14 +13,14 @@ static OSMesg aiMessages[AI_MSG_SIZE];
 
 static ADPCMstate adpcm_state;
 
-struct AudioRing {
+typedef struct AudioRing {
     struct AudioRing *next;
     u32 len;
     u32 open;
     s16 (*samples)[PCMBUF_SIZE];
-};
+} AudioRing;
 
-struct AudioRing rbuffer[] = {
+AudioRing rbuffer[] = {
     {.next = &rbuffer[1]},
     {.next = &rbuffer[2]},
     {.next = &rbuffer[3]},
@@ -39,7 +39,7 @@ struct AudioRing rbuffer[] = {
     {.next = &rbuffer[0]},
 };
 
-struct AudioRing *currBuf;
+AudioRing *currBuf;
 
 u64 playtime_us = 0;
 u32 real_frequency = 0;
@@ -49,7 +49,7 @@ static u32 next_audio_record(void **streamp, void *pcmbuf) {
     HVQM2Audio *audio_headerP;
     u32 samples;
 
-    *streamp = get_record(&record_header, adpcmbuf, HVQM2_AUDIO, *streamp);
+    get_record(&record_header, adpcmbuf, HVQM2_AUDIO, streamp);
 
     audio_headerP = (HVQM2Audio *) adpcmbuf;
     samples = load32(audio_headerP->samples);
@@ -98,9 +98,9 @@ void AudioMain(void *arg) {
     
     while (1) {
         if (audio_remain != 0) {
-            osSyncPrintf("    ");
-            osSyncPrintf("aremain %d\n", audio_remain);
-            osSyncPrintf("PLAYTIME %lld\n", playtime_us);
+            // osSyncPrintf("    ");
+            // osSyncPrintf("aremain %d\n", audio_remain);
+            // osSyncPrintf("PLAYTIME %lld\n", playtime_us);
             process_audio(&streamp);
             audio_remain--;
         } else {
