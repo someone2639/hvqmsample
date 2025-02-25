@@ -87,10 +87,8 @@ void Main(void *video) {
     while (video_remain > 0) {
         VideoMain(&video_streamP);
 
-        osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
-        // Go to the process for next frame
         disptime_us += usec_per_frame;
-        --video_remain;
+        osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
     }
 
     while (1) { ; }

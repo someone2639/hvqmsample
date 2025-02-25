@@ -148,9 +148,9 @@ void decode_video(VideoRing *vbuf) {
 void show_next_frame(void **streamp) {
     if (currVBuf->endtime_us <= disptime_us) {
         currVBuf = currVBuf->next;
-        disptime_us += usec_per_frame;
         load_video_frame(streamp, currVBuf);
         decode_video(currVBuf);
+        --video_remain;
     }
     if (currVBuf->format != HVQM2_VIDEO_HOLD) {
         osViSwapBuffer(currVBuf->cfb);

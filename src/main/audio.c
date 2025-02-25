@@ -46,7 +46,7 @@ u64 playtime_us = 0;
 u32 real_frequency = 0;
 
 static u32 samples2usec(AudioRing *buf) {
-    return (((f32)buf->len / (f32)real_frequency) * 1000000.0f) * 2;
+    return (((f32)buf->len / (f32)real_frequency) * 1000000.0f);
 }
 
 static u32 next_audio_record(void **streamp, void *pcmbuf) {
