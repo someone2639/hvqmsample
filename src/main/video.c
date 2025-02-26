@@ -176,6 +176,7 @@ void show_next_frame(void **streamp) {
     }
     if (currVBuf->format != HVQM2_VIDEO_HOLD) {
         osViSwapBuffer(currVBuf->cfb);
+        osYieldThread();
     }
 }
 

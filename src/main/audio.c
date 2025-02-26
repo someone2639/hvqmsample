@@ -74,6 +74,7 @@ void init_audio(void **streamp) {
     // TODO: init ring buffer and perform first 3 conversions
     osCreateMesgQueue(&aiMessageQ, aiMessages, AI_MSG_SIZE);
     osSetEventMesg(OS_EVENT_AI, &aiMessageQ, (OSMesg *) 1);
+    osSendMesg(&aiMessageQ, (OSMesg)0, OS_MESG_NOBLOCK);
 
     bzero(pcmbuf, sizeof(pcmbuf));
 
@@ -91,16 +92,14 @@ void init_audio(void **streamp) {
 void process_audio(void **streamp) {
     osWritebackDCacheAll();
 
-    int result = osAiSetNextBuffer(currBuf->samples, ALIGN(currBuf->len * 2 * sizeof(u16), 0x100));
+    osRecvMesg(&aiMessageQ, NULL, OS_MESG_BLOCK);
+    int result = osAiSetNextBuffer(currBuf->samples, ALIGN(currBuf->len * 2 * sizeof(u16), 8));
 
-    playtime_us += samples2usec(currBuf);
-    if (result == 0) {
-        if (playtime_us > currBuf->endtime_us) {
-            currBuf = currBuf->next;
-            ring_update(streamp, currBuf->prev);
-        }
-        osRecvMesg(&aiMessageQ, NULL, OS_MESG_BLOCK);
+    if (playtime_us > currBuf->endtime_us) {
+        currBuf = currBuf->next;
+        ring_update(streamp, currBuf->prev);
     }
+    playtime_us += samples2usec(currBuf);
 }
 
 void AudioMain(void *arg) {
