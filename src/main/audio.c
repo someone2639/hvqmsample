@@ -132,6 +132,7 @@ void AudioMain(void *arg) {
     real_frequency = osAiSetFrequency(args->samples_per_sec);
 
     init_audio(&streamp);
+    playtime_us = 0;
     
     while (1) {
         if (audio_remain != 0) {

@@ -53,7 +53,7 @@ void Main(void *video) {
     init_hvqm_task();
 
     // Initialize the frame buffer (clear buffer contents and status flag)
-    // osViSwapBuffer(cfb[NUM_CFBs - 1]);
+    osViSwapBuffer(cfb[NUM_CFBs - 1]);
 
     // Fetch the HVQM2 header
     dma_copy(&hvqm_header, video, sizeof(HVQM2Header), NULL);
@@ -99,7 +99,7 @@ void Main(void *video) {
         VideoMain(&video_streamP);
 
         // disptime_us += usec_per_frame;
-        disptime_us += OS_CYCLES_TO_USEC(osGetTime());
+        disptime_us = OS_CYCLES_TO_USEC(osGetTime());
         osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
     }
 
