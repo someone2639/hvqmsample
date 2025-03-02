@@ -88,7 +88,12 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
 
     vbuf->format = load16(record_header.format);
 
-    u32 starttime_us = disptime_us;
+    u32 starttime_us;
+    if (currVBuf && currVBuf->prev) {
+        starttime_us = currVBuf->prev->endtime_us;
+    } else {
+        starttime_us = disptime_us;
+    }
 
     u32 skipped_frames = 0;
 
@@ -161,12 +166,12 @@ void show_next_frame(void **streamp) {
     // if (video_playing()) {
     //     if (disptime_us > (playtime_us + (usec_per_frame * 10))) {
     //         // while (disptime_us > playtime_us) {
-    //         osSyncPrintf("HOLDING V%llu A%llu\n", disptime_us, playtime_us);
     //         hold_all_frames();
     //         osYieldThread();
     //         // }
     //     }
     // }
+    osSyncPrintf("V%llu A%llu\n", disptime_us, playtime_us);
     if (currVBuf->endtime_us <= disptime_us) {
         currVBuf = currVBuf->next;
         load_video_frame(streamp, currVBuf);

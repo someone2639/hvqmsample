@@ -105,13 +105,18 @@ typedef u16 CFBPix;
 /*
  * Thread ID and priority
  */
-#define IDLE_THREAD_ID         1
-#define MAIN_THREAD_ID         2
-#define AUD_THREAD_ID          3
-#define FAULT_THREAD_ID        4
+enum Threads {
+    IDLE_THREAD_ID = 1,
+    MAIN_THREAD_ID,
+    AUD_THREAD_ID,
+    VIDEO_THREAD_ID,
+    FAULT_THREAD_ID,
+    SCHED_THREAD_ID,
+};
 
 #define IDLE_PRIORITY         10
 #define MAIN_PRIORITY         10
+#define VID_PRIORITY          14
 #define AUD_PRIORITY          14
 
 #define PI_COMMAND_QUEUE_SIZE   8
@@ -135,6 +140,7 @@ typedef struct {
     void *streamp; // ptr to first aud record
     u32 remain; // remaining audio frames
     u32 samples_per_sec;
+    u32 num_channels;
 } AudThreadParams;
 
 extern HVQM2Header hvqm_header;

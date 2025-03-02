@@ -6,6 +6,7 @@
 
 int next_pcmbufno = 0;
 int pcm_mod_samples = 0;
+u32 samples_elapsed = 0;
 
 #define AI_MSG_SIZE 2
 static OSMesgQueue aiMessageQ;
@@ -44,9 +45,25 @@ AudioRing *currBuf;
 
 u64 playtime_us = 0;
 u32 real_frequency = 0;
+u32 num_channels = 1;
+
+extern u64 disptime_us;
+
+static u32 audio_playing() {
+    return (playtime_us != 0) && (disptime_us != 0) && (samples_elapsed > NUM_CFBs);
+}
 
 static u32 samples2usec(AudioRing *buf) {
     return (((f32)buf->len / (f32)real_frequency) * 1000000.0f);
+}
+
+
+u32 get_usec() {
+    if (currBuf) {
+        return samples2usec(currBuf);
+    } else {
+        return 0;
+    }
 }
 
 static u32 next_audio_record(void **streamp, void *pcmbuf) {
@@ -97,8 +114,11 @@ void process_audio(void **streamp) {
 
     if (playtime_us > currBuf->endtime_us) {
         currBuf = currBuf->next;
+        samples_elapsed++;
+        // osSyncPrintf("AUD %d\n", samples_elapsed);
         ring_update(streamp, currBuf->prev);
     }
+
     playtime_us += samples2usec(currBuf);
 }
 
@@ -106,6 +126,7 @@ void AudioMain(void *arg) {
     AudThreadParams *args = arg;
     void *streamp = args->streamp;
     register u32 audio_remain = args->remain;
+    num_channels = args->num_channels;
     // WARNING: If sample rate is lower than 32000, emulators will slow down!
     // TODO: Turn into an audio task using aspMain to resample all audio to 32k
     real_frequency = osAiSetFrequency(args->samples_per_sec);
