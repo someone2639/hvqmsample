@@ -161,19 +161,19 @@ void decode_video(VideoRing *vbuf) {
     }
 }
 
-void hold_all_frames() {
+void hold_all_frames(u32 count) {
     for (int i = 0; i < NUM_CFBs; i++) {
-        vbuffer[i].endtime_us += usec_per_frame;
+        vbuffer[i].endtime_us += (usec_per_frame * count);
     }
 }
 
 void show_next_frame(void **streamp) {
     if (video_playing()) {
         if (disptime_us > (playtime_us + (usec_per_frame * 10))) {
-            // while (disptime_us > playtime_us) {
-            hold_all_frames();
+            u32 count = (disptime_us - playtime_us) / (usec_per_frame);
+            osSyncPrintf("HOLD %d\n", count);
+            hold_all_frames(count);
             osYieldThread();
-            // }
         }
     }
     osSyncPrintf("V%llu vs %llu\n", disptime_us, currVBuf->endtime_us);
