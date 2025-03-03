@@ -88,7 +88,7 @@ void ring_update(void **streamp, AudioRing *abuf) {
 }
 
 void init_audio(void **streamp) {
-    // TODO: init ring buffer and perform first 3 conversions
+    // init ring buffer and load first N samples
     osCreateMesgQueue(&aiMessageQ, aiMessages, AI_MSG_SIZE);
     osSetEventMesg(OS_EVENT_AI, &aiMessageQ, (OSMesg *) 1);
     osSendMesg(&aiMessageQ, (OSMesg)0, OS_MESG_NOBLOCK);
@@ -115,7 +115,6 @@ void process_audio(void **streamp) {
     if (playtime_us > currBuf->endtime_us) {
         currBuf = currBuf->next;
         samples_elapsed++;
-        // osSyncPrintf("AUD %d\n", samples_elapsed);
         ring_update(streamp, currBuf->prev);
     }
 

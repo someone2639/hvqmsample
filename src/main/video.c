@@ -88,7 +88,12 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
 
     vbuf->format = load16(record_header.format);
 
-    u32 starttime_us = frames_elapsed * usec_per_frame;
+    // A frame is scheduled for this many us past the start of the video
+    u64 starttime_us = (frames_elapsed * usec_per_frame);
+
+    if (starttime_us > usec_per_frame) {
+        starttime_us -= usec_per_frame;
+    }
 
     u32 skipped_frames = 0;
 
@@ -107,7 +112,12 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
                 video_remain--;
                 if (record_header.format == HVQM2_VIDEO_KEYFRAME) {
                     osSyncPrintf("(keyframed)\n");
-                    break;
+                    // skup further if we're REALLY far behind
+                    if (playtime_us > (starttime_us + (usec_per_frame * 2))) {
+                        continue;
+                    } else {
+                        break;
+                    }
                 }
                 if (video_remain == 0) {
                     break;
@@ -123,7 +133,7 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
     }
     load_record(record_size, HVQM2_VIDEO, hvqbuf, streamp);
 
-    vbuf->endtime_us = starttime_us + usec_per_frame;
+    vbuf->endtime_us = starttime_us;
 }
 
 // Actually decodes the frame
@@ -151,27 +161,27 @@ void decode_video(VideoRing *vbuf) {
     }
 }
 
-// void hold_all_frames() {
-//     for (int i = 0; i < NUM_CFBs; i++) {
-//         vbuffer[i].endtime_us += usec_per_frame;
-//     }
-// }
+void hold_all_frames() {
+    for (int i = 0; i < NUM_CFBs; i++) {
+        vbuffer[i].endtime_us += usec_per_frame;
+    }
+}
 
 void show_next_frame(void **streamp) {
-    // if (video_playing()) {
-    //     if (disptime_us > (playtime_us + (usec_per_frame * 10))) {
-    //         // while (disptime_us > playtime_us) {
-    //         hold_all_frames();
-    //         osYieldThread();
-    //         // }
-    //     }
-    // }
+    if (video_playing()) {
+        if (disptime_us > (playtime_us + (usec_per_frame * 10))) {
+            // while (disptime_us > playtime_us) {
+            hold_all_frames();
+            osYieldThread();
+            // }
+        }
+    }
     osSyncPrintf("V%llu vs %llu\n", disptime_us, currVBuf->endtime_us);
     if (currVBuf->endtime_us <= playtime_us) {
         currVBuf = currVBuf->next;
         load_video_frame(streamp, currVBuf);
         decode_video(currVBuf);
-        --video_remain;
+        video_remain--;
         frames_elapsed++;
     }
     if (currVBuf->format != HVQM2_VIDEO_HOLD) {
