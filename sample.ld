@@ -91,7 +91,7 @@ SECTIONS
 
    BEGIN_SEG(hvqmdata, __romPos)
    {
-      BUILD_DIR/assets/dressup.hvqm.o(.data);
+      BUILD_DIR/assets/fakecrash.hvqm.o(.data);
    }
    END_SEG(hvqmdata)
    /* Discard everything not specifically mentioned above. */

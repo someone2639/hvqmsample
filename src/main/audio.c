@@ -106,7 +106,8 @@ void init_audio(void **streamp) {
     currBuf = &rbuffer[0];
 }
 
-void process_audio(void **streamp) {
+int process_audio(void **streamp) {
+    int ret = 0;
     osWritebackDCacheAll();
 
     osRecvMesg(&aiMessageQ, NULL, OS_MESG_BLOCK);
@@ -116,15 +117,18 @@ void process_audio(void **streamp) {
         currBuf = currBuf->next;
         samples_elapsed++;
         ring_update(streamp, currBuf->prev);
+        ret = 1;
     }
 
     playtime_us += samples2usec(currBuf);
+
+    return ret;
 }
 
 void AudioMain(void *arg) {
     AudThreadParams *args = arg;
     void *streamp = args->streamp;
-    register u32 audio_remain = args->remain;
+    register u32 audio_remain = args->remain - NUM_PCMBUFs;
     num_channels = args->num_channels;
     // WARNING: If sample rate is lower than 32000, emulators will slow down!
     // TODO: Turn into an audio task using aspMain to resample all audio to 32k
@@ -133,13 +137,9 @@ void AudioMain(void *arg) {
     init_audio(&streamp);
     playtime_us = 0;
     
-    while (1) {
-        if (audio_remain != 0) {
-            process_audio(&streamp);
-            audio_remain--;
-        } else {
-            break;
-        }
+    while (audio_remain > 0) {
+        osSyncPrintf("REMAIN %d\n", audio_remain);
+        audio_remain -= process_audio(&streamp);
     }
 
     osSyncPrintf("AUD PLAYBACK DONE\n");

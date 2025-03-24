@@ -114,6 +114,7 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
                     osSyncPrintf("(keyframed)\n");
                     // skup further if we're REALLY far behind
                     if (playtime_us > (starttime_us + (usec_per_frame * 2))) {
+                        osSyncPrintf("(we're REALLY far behind)\n");
                         continue;
                     } else {
                         break;
@@ -171,12 +172,13 @@ void show_next_frame(void **streamp) {
     if (video_playing()) {
         if (disptime_us > (playtime_us + (usec_per_frame * 10))) {
             u32 count = (disptime_us - playtime_us) / (usec_per_frame);
-            osSyncPrintf("HOLD %d\n", count);
+            // osSyncPrintf("HOLD %d\n", count);
             hold_all_frames(count);
             osYieldThread();
         }
     }
-    osSyncPrintf("V%llu vs %llu\n", disptime_us, currVBuf->endtime_us);
+    // osSyncPrintf("REMAIN %d\n", video_remain);
+    // osSyncPrintf("V%llu vs %llu\n", disptime_us, currVBuf->endtime_us);
     if (currVBuf->endtime_us <= playtime_us) {
         currVBuf = currVBuf->next;
         load_video_frame(streamp, currVBuf);
