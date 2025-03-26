@@ -66,6 +66,7 @@ void Main(void *video) {
     u32 total_audio_records = load32(hvqm_header.total_audio_records);
 
     void *video_streamP = video + sizeof(HVQM2Header);
+    void *vstreambase = video_streamP;
     extern u32 video_remain;
     u32 vremain_base = video_remain = total_frames - NUM_CFBs;
 
@@ -90,19 +91,21 @@ void Main(void *video) {
     screen_offset = SCREEN_WD * v_offset + h_offset;
 
     // Setup the HVQM2 image decoder
+    hvqm2SetupSP1(&hvqm_header, SCREEN_WD);
+    init_video(&video_streamP, screen_offset);
     while (1) {
-        hvqm2SetupSP1(&hvqm_header, SCREEN_WD);
-        init_video(&video_streamP, screen_offset);
 
+        osSyncPrintf("VREMAIN %d STREAMP %08X\n", video_remain, video_streamP);
         osSetTime(0);
         while (video_remain > 0) {
-            osSyncPrintf("VREMAIN %d\n", video_remain);
+            // osSyncPrintf("VREMAIN %d\n", video_remain);
             VideoMain(&video_streamP);
 
             disptime_us = OS_CYCLES_TO_USEC(osGetTime());
             osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
         }
-        reset_video(&video_streamP, video, vremain_base, screen_offset);
+        video_streamP = vstreambase;
+        reset_video(&video_streamP, vremain_base, screen_offset);
         disptime_us = 0;
     }
 

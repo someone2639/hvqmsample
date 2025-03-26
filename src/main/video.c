@@ -206,8 +206,7 @@ void show_next_frame(void **streamp) {
     }
 }
 
-void reset_video(void **streamp, void *vid, u32 remainbase, u32 offset) {
-    *streamp = vid + sizeof(HVQM2Header);
+void reset_video(void **streamp, u32 remainbase, u32 offset) {
     video_remain = remainbase;
     frames_elapsed = 0;
     osWritebackDCacheAll();
