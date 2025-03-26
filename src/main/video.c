@@ -2,6 +2,7 @@
 #include <HVQM2File.h>
 #include <hvqm2dec.h>
 #include "system.h"
+#include "profiler.h"
 
 static OSMesgQueue spMesgQ;
 static OSMesg spMesgBuf;
@@ -39,13 +40,17 @@ u32 video_playing() {
 }
 
 void init_video(void **streamp, u32 offset) {
+    new_profiler("HVQM Part1 (CPU)");
+    new_profiler("HVQM Part2 (RSP)");
+
     for (int i = 0; i < NUM_CFBs; i++) {
         vbuffer[i].cfb = &cfb[i][0];
         bzero(cfb[i], sizeof(cfb[i]));
         vbuffer[i].drawbuf = &cfb[i][offset];
+        vbuffer[i].endtime_us = 0;
     }
 
-    for (int i = 0; i < NUM_CFBs - 1; i++) {
+    for (int i = 0; i < NUM_CFBs; i++) {
         load_video_frame(streamp, &vbuffer[i]);
         decode_video(&vbuffer[i]);
     }
@@ -147,17 +152,28 @@ void decode_video(VideoRing *vbuf) {
         // Process first half in the CPU
         hvqtask.t.flags = 0;
 
+        start_profiler("HVQM Part1 (CPU)");
         vbuf->status = hvqm2DecodeSP1(hvqbuf, vbuf->format, vbuf->drawbuf,
                                 vbuf->prev->drawbuf, hvqwork,
                                 &hvq_sparg, hvq_spfifo
                                 );
+        end_profiler("HVQM Part1 (CPU)");
+        if (vbuf->format == HVQM2_VIDEO_KEYFRAME) {
+            tag_profiler("HVQM Part1 (CPU)", "HVQM2_VIDEO_KEYFRAME");
+        } else {
+            tag_profiler("HVQM Part1 (CPU)", "HVQM2_VIDEO_PREDICT");
+        }
+        // print_profiler("HVQM Part1 (CPU)");
         osWritebackDCacheAll();
 
         // Process last half in the RSP
         if (vbuf->status > 0) {
             osInvalDCache((void *) vbuf->cfb, SCREEN_WD * SCREEN_HT * sizeof(CFBPix));
+            start_profiler("HVQM Part2 (RSP)");
             osSpTaskStart(&hvqtask);
             osRecvMesg(&spMesgQ, NULL, OS_MESG_BLOCK);
+            end_profiler("HVQM Part2 (RSP)");
+            // print_profiler("HVQM Part2 (RSP)");
         }
     }
 }
@@ -172,13 +188,11 @@ void show_next_frame(void **streamp) {
     if (video_playing()) {
         if (disptime_us > (playtime_us + (usec_per_frame * 10))) {
             u32 count = (disptime_us - playtime_us) / (usec_per_frame);
-            // osSyncPrintf("HOLD %d\n", count);
+            osSyncPrintf("HOLD %d\n", count);
             hold_all_frames(count);
             osYieldThread();
         }
     }
-    // osSyncPrintf("REMAIN %d\n", video_remain);
-    // osSyncPrintf("V%llu vs %llu\n", disptime_us, currVBuf->endtime_us);
     if (currVBuf->endtime_us <= playtime_us) {
         currVBuf = currVBuf->next;
         load_video_frame(streamp, currVBuf);
@@ -192,7 +206,16 @@ void show_next_frame(void **streamp) {
     }
 }
 
+void reset_video(void **streamp, void *vid, u32 remainbase, u32 offset) {
+    *streamp = vid + sizeof(HVQM2Header);
+    video_remain = remainbase;
+    frames_elapsed = 0;
+    osWritebackDCacheAll();
+    init_video(streamp, offset);
+}
+
 // Currently just a wrapper
 void VideoMain(void **streamp) {
+    read_controllers();
     show_next_frame(streamp);
 }

@@ -51,6 +51,7 @@ void Main(void *video) {
 
     init_dma();
     init_hvqm_task();
+    init_controllers();
 
     // Initialize the frame buffer (clear buffer contents and status flag)
     osViSwapBuffer(cfb[NUM_CFBs - 1]);
@@ -66,7 +67,7 @@ void Main(void *video) {
 
     void *video_streamP = video + sizeof(HVQM2Header);
     extern u32 video_remain;
-    video_remain = total_frames;
+    u32 vremain_base = video_remain = total_frames - NUM_CFBs;
 
     void *audio_streamP = video + sizeof(HVQM2Header);
     u32 audio_remain = total_audio_records;
@@ -89,18 +90,20 @@ void Main(void *video) {
     screen_offset = SCREEN_WD * v_offset + h_offset;
 
     // Setup the HVQM2 image decoder
-    hvqm2SetupSP1(&hvqm_header, SCREEN_WD);
-    init_video(&video_streamP, screen_offset);
+    while (1) {
+        hvqm2SetupSP1(&hvqm_header, SCREEN_WD);
+        init_video(&video_streamP, screen_offset);
 
-    // scheduler_init();
+        osSetTime(0);
+        while (video_remain > 0) {
+            osSyncPrintf("VREMAIN %d\n", video_remain);
+            VideoMain(&video_streamP);
 
-    osSetTime(0);
-    while (video_remain > 0) {
-        VideoMain(&video_streamP);
-
-        // disptime_us += usec_per_frame;
-        disptime_us = OS_CYCLES_TO_USEC(osGetTime());
-        osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
+            disptime_us = OS_CYCLES_TO_USEC(osGetTime());
+            osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
+        }
+        reset_video(&video_streamP, video, vremain_base, screen_offset);
+        disptime_us = 0;
     }
 
     while (1) { ; }

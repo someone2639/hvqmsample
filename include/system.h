@@ -93,7 +93,7 @@ typedef u16 CFBPix;
 /*
  * PCM buffer specifications
  */
-#define  NUM_PCMBUFs    16  /* Number of PCM buffers (2 or more, at least 3 recommended) */
+#define  NUM_PCMBUFs    2  /* Number of PCM buffers (2 or more, at least 3 recommended) */
 #define  PCMBUF_SIZE     0x2000
 
 /*
