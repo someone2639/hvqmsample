@@ -54,7 +54,7 @@ u32 num_channels = 1;
 extern u64 disptime_us;
 
 static u32 audio_playing() {
-    return (playtime_us != 0) && (disptime_us != 0) && (samples_elapsed > NUM_CFBs);
+    return (playtime_us != 0) && (disptime_us != 0) && (samples_elapsed > NUM_PCMBUFs);
 }
 
 static u32 samples2usec(AudioRing *buf) {
@@ -137,6 +137,7 @@ void reset_audio(void **streamp) {
     osWritebackDCacheAll();
     init_audio(streamp);
     playtime_us = 0;
+    samples_elapsed = 0;
 }
 
 void AudioMain(void *arg) {
@@ -157,6 +158,9 @@ void AudioMain(void *arg) {
         while (audio_remain > 0) {
             // osSyncPrintf("REMAIN %d\n", audio_remain);
             audio_remain -= process_audio(&streamp);
+            if (get_button() & A_BUTTON) {
+                reset_audio(&streamp);
+            }
             // osRecvMesg(&aiMessageQ, NULL, OS_MESG_BLOCK);
             // u32 len = next_audio_record(&streamp, pcmbuf[samples_elapsed % NUM_PCMBUFs]);
             // osWritebackDCacheAll();

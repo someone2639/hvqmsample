@@ -30,3 +30,12 @@ u32 get_button() {
     return contPads[0].button;
 }
 
+
+void ContMain(void *arg) {
+    init_controllers();
+
+    while (1) {
+        read_controllers();
+    }
+}
+
