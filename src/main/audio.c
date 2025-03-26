@@ -61,14 +61,6 @@ static u32 samples2usec(AudioRing *buf) {
     return (((f32)buf->len / (f32)real_frequency) * 1000000.0f);
 }
 
-u32 get_usec() {
-    if (currBuf) {
-        return samples2usec(currBuf);
-    } else {
-        return 0;
-    }
-}
-
 static u32 next_audio_record(void **streamp, void *pcmbuf) {
     HVQM2Record record_header __attribute__((aligned(16)));
     HVQM2Audio *audio_headerP;
@@ -85,12 +77,12 @@ static u32 next_audio_record(void **streamp, void *pcmbuf) {
     return samples;
 }
 
-void ring_update(void **streamp, AudioRing *abuf) {
+static void ring_update(void **streamp, AudioRing *abuf) {
     abuf->len = next_audio_record(streamp, abuf->samples);
     abuf->endtime_us = playtime_us + samples2usec(abuf)/2;
 }
 
-void init_audio(void **streamp) {
+static void init_audio(void **streamp) {
     // init ring buffer and load first N samples
     osCreateMesgQueue(&aiMessageQ, aiMessages, AI_MSG_SIZE);
     osSetEventMesg(OS_EVENT_AI, &aiMessageQ, (OSMesg *) 1);
@@ -109,7 +101,7 @@ void init_audio(void **streamp) {
     currBuf = &rbuffer[0];
 }
 
-int process_audio(void **streamp) {
+static int process_audio(void **streamp) {
     int ret = 0;
     osWritebackDCacheAll();
 
@@ -131,13 +123,24 @@ int process_audio(void **streamp) {
 
 u32 audio_remain = 0;
 
-void reset_audio(void **streamp) {
+static void reset_audio(void **streamp) {
     *streamp = audStreamPBase;
     audio_remain = audRemainBase;
     osWritebackDCacheAll();
     init_audio(streamp);
     playtime_us = 0;
     samples_elapsed = 0;
+}
+
+static void AudioImmediate(void **streamp) {
+    osRecvMesg(&aiMessageQ, NULL, OS_MESG_BLOCK);
+    u32 len = next_audio_record(streamp, pcmbuf[samples_elapsed % NUM_PCMBUFs]);
+    osWritebackDCacheAll();
+    int result = osAiSetNextBuffer(pcmbuf[samples_elapsed % NUM_PCMBUFs], ALIGN(len * 2 * sizeof(u16), 8));
+    if (result == 0) {
+        samples_elapsed++;
+        audio_remain--;
+    }
 }
 
 void AudioMain(void *arg) {
@@ -152,30 +155,21 @@ void AudioMain(void *arg) {
     init_audio(&streamp);
     playtime_us = 0;
 
-
-
     while (1) {
         while (audio_remain > 0) {
             // osSyncPrintf("REMAIN %d\n", audio_remain);
             audio_remain -= process_audio(&streamp);
-            if (get_button() & A_BUTTON) {
-                reset_audio(&streamp);
-            }
-            // osRecvMesg(&aiMessageQ, NULL, OS_MESG_BLOCK);
-            // u32 len = next_audio_record(&streamp, pcmbuf[samples_elapsed % NUM_PCMBUFs]);
-            // osWritebackDCacheAll();
-            // int result = osAiSetNextBuffer(pcmbuf[samples_elapsed % NUM_PCMBUFs], ALIGN(len * 2 * sizeof(u16), 8));
-            // if (result == 0) {
-            //     samples_elapsed++;
-            //     audio_remain--;
-            // }
         }
 
         osSyncPrintf("PLAYBACK DONE\n");
-
         get_fps_vals("HVQM Part1 (CPU)", "HVQM Part2 (RSP)");
 
+#ifdef LOOP
         reset_audio(&streamp);
+#else
+        break;
+#endif // LOOP
+
     }
 
     while (1);

@@ -8,6 +8,8 @@ typedef struct {
     u64 end;
     u64 maxTime;
     u64 minTime;
+    double avgTime;
+    u32 numSamples;
 } Profiler;
 
 #define NUM_PROFILERS 8
@@ -17,8 +19,10 @@ void new_profiler(char *name);
 void start_profiler(char *name);
 void end_profiler(char *name);
 void tag_profiler(char *name, char *tag);
+void get_fps_vals(char *cname, char *rname);
 
 u64 get_profiler_time(char *name);
 void print_profiler(char *name);
+extern int strlen(char *);
 
 #endif // PROFILER_H

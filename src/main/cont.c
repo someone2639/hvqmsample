@@ -1,4 +1,8 @@
 #include <ultra64.h>
+#include "system.h"
+
+OSThread contThread;
+u64 contStack[STACKSIZE];
 
 #define CONT_MSG_SIZE 2
 OSMesgQueue contMessageQ;
@@ -9,7 +13,6 @@ OSContStatus contStatuses[MAXCONTROLLERS];
 static OSMesg dummy;
 
 void init_controllers() {
-
     osCreateMesgQueue(&contMessageQ, contMessages, CONT_MSG_SIZE);
     osSetEventMesg(OS_EVENT_SI, &contMessageQ, (OSMesg *) 1);
     osContInit(&contMessageQ, contBits, contStatuses);
@@ -26,8 +29,12 @@ void read_controllers() {
     osContGetReadData(contPads);
 }
 
-u32 get_button() {
-    return contPads[0].button;
+u32 test_button(u32 button) {
+    if (contPads[0].button & button) {
+        contPads[0].button &= ~button;
+        return 1;
+    }
+    return 0;
 }
 
 
@@ -37,5 +44,11 @@ void ContMain(void *arg) {
     while (1) {
         read_controllers();
     }
+}
+
+
+void start_cont_thread() {
+    osCreateThread(&contThread, CONT_THREAD_ID, ContMain, NULL, &contStack[STACKSIZE / 8], CONT_PRIORITY);
+    osStartThread(&contThread);
 }
 

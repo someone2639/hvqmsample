@@ -1,20 +1,3 @@
-# Makefile to build hvqmsample
-
-#  Kind of HVQM2 decoder being used
-#    0 : CPU version
-#    1 : CPU+RSP version
-USE_RSP = 1
-
-#  Whether to forcedly synchronize video to audio when video playback is late
-#    0 : Decode every frame (do not synchronize)
-#    1 : Skip frames to force video into sync
-SYNC_VIDEO = 0
-
-#  Format of display-use frame buffer (selected HVQM2 decoder also reflects on this)
-#    1 : 16-bit
-#    2 : 32-bit
-CFB_FORMAT = 1
-
 #  Maximum size of image [pixel]  (reflects on memory reserved for hvqmwork.c)
 MAXWIDTH  = 320
 MAXHEIGHT = 240
@@ -23,7 +6,7 @@ TARGET_STRING := sample
 TARGET := $(TARGET_STRING)
 
 # Preprocessor definitions
-DEFINES := DEBUG=1 F3DEX_GBI_2=1 MAXWIDTH=$(MAXWIDTH) MAXHEIGHT=$(MAXHEIGHT) CFB_FORMAT=$(CFB_FORMAT) USE_RSP=$(USE_RSP) SYNC_VIDEO=$(SYNC_VIDEO)
+DEFINES := DEBUG=1 F3DEX_GBI_2=1 MAXWIDTH=$(MAXWIDTH) MAXHEIGHT=$(MAXHEIGHT)
 
 SRC_DIRS :=
 

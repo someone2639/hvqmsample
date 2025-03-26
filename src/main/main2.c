@@ -51,7 +51,11 @@ void Main(void *video) {
 
     init_dma();
     init_hvqm_task();
-    init_controllers();
+    // init_controllers();
+
+#ifdef CONTSUPPORT
+    start_cont_thread();
+#endif // CONTSUPPORT
 
     // Initialize the frame buffer (clear buffer contents and status flag)
     osViSwapBuffer(cfb[NUM_CFBs - 1]);
@@ -84,8 +88,6 @@ void Main(void *video) {
         osStartThread(&audThread);
     }
 
-    osSyncPrintf("EXPECTED TIMES: %d %d\n", total_frames * usec_per_frame, total_audio_records * get_usec());
-
     h_offset = (SCREEN_WD - hvqm_header.width) / 2;
     v_offset = (SCREEN_HT - hvqm_header.height) / 2;
     screen_offset = SCREEN_WD * v_offset + h_offset;
@@ -103,16 +105,20 @@ void Main(void *video) {
             disptime_us = OS_CYCLES_TO_USEC(osGetTime());
             osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
 
+#ifdef CONTSUPPORT
             if (get_button() & A_BUTTON) {
-                video_streamP = vstreambase;
-                reset_video(&video_streamP, vremain_base, screen_offset);
-                disptime_us = 0;
-                osSetTime(0);
+                // TODO: Pause
             }
+#endif // CONTSUPPORT
         }
+
+#ifdef LOOP
         video_streamP = vstreambase;
         reset_video(&video_streamP, vremain_base, screen_offset);
         disptime_us = 0;
+#else
+        break;
+#endif // LOOP
     }
 
     while (1) { ; }

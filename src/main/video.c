@@ -163,7 +163,7 @@ void decode_video(VideoRing *vbuf) {
         } else {
             tag_profiler("HVQM Part1 (CPU)", "HVQM2_VIDEO_PREDICT");
         }
-        // print_profiler("HVQM Part1 (CPU)");
+        print_profiler("HVQM Part1 (CPU)");
         osWritebackDCacheAll();
 
         // Process last half in the RSP
@@ -173,7 +173,7 @@ void decode_video(VideoRing *vbuf) {
             osSpTaskStart(&hvqtask);
             osRecvMesg(&spMesgQ, NULL, OS_MESG_BLOCK);
             end_profiler("HVQM Part2 (RSP)");
-            // print_profiler("HVQM Part2 (RSP)");
+            print_profiler("HVQM Part2 (RSP)");
         }
     }
 }
@@ -211,10 +211,10 @@ void reset_video(void **streamp, u32 remainbase, u32 offset) {
     frames_elapsed = 0;
     osWritebackDCacheAll();
     init_video(streamp, offset);
+    disptime_us = 0;
 }
 
 // Currently just a wrapper
 void VideoMain(void **streamp) {
-    read_controllers();
     show_next_frame(streamp);
 }

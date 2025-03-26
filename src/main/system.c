@@ -75,7 +75,9 @@ static void idle(void *arg) {
 
     EXTERN_VIDEO(hvqmdata);
 
+#ifdef FAULT
     crash_screen_init(0);
+#endif // FAULT
 
     /* Start main thread */
     osCreateThread(&mainThread, MAIN_THREAD_ID, mainproc, VIDEO(hvqmdata), mainThreadStack + STACKSIZE / 8,

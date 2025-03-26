@@ -1,5 +1,6 @@
 #include <ultra64.h>
 #include "profiler.h"
+#include "system.h"
 
 // #define PDEBUG
 
@@ -59,6 +60,7 @@ void get_fps_vals(char *cname, char *rname) {
 
     osSyncPrintf("FPS:\n");
     osSyncPrintf("    Best Case: %lf FPS\n", time2fps(cpu->minTime + rsp->minTime));
+    osSyncPrintf("      Average: %lf FPS\n", 1000.0 / (cpu->avgTime + rsp->avgTime));
     osSyncPrintf("   Worst Case: %lf FPS\n", time2fps(cpu->maxTime + rsp->maxTime));
 }
 
@@ -73,6 +75,8 @@ void new_profiler(char *name) {
     bzero(p->tag, 64);
     p->maxTime = 0;
     p->minTime = 0xFFFFFFFFFFFFFFFFULL;
+    p->avgTime = 0.0;
+    p->numSamples = 1;
 }
 
 void tag_profiler(char *name, char *tag) {
@@ -87,22 +91,30 @@ void start_profiler(char *name) {
 }
 
 void end_profiler(char *name) {
-    search_profiler(name)->end = osGetTime();
+    Profiler *p = search_profiler(name);
+
+    p->end = osGetTime();
+
+    u64 dtime = p->end - p->start;
+
+    if (p->numSamples == 1) {
+        p->avgTime = time2ms(dtime);
+    } else {
+        p->avgTime = (time2ms(dtime) + (p->numSamples * p->avgTime)) / (p->numSamples + 1);
+    }
+    p->numSamples++;
+
+    if (dtime < p->minTime) {
+        p->minTime = dtime;
+    }
+    if (dtime > p->maxTime) {
+        p->maxTime = dtime;
+    }
 }
 
 u64 get_profiler_time(char *name) {
     Profiler *p = search_profiler(name);
-
-    u64 ret = p->end - p->start;
-
-    if (ret < p->minTime) {
-        p->minTime = ret;
-    }
-    if (ret > p->maxTime) {
-        p->maxTime = ret;
-    }
-
-    return ret;
+    return p->end - p->start;
 }
 
 void print_profiler(char *name) {

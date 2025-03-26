@@ -112,12 +112,14 @@ enum Threads {
     VIDEO_THREAD_ID,
     FAULT_THREAD_ID,
     SCHED_THREAD_ID,
+    CONT_THREAD_ID,
 };
 
 #define IDLE_PRIORITY         10
 #define MAIN_PRIORITY         10
 #define VID_PRIORITY          14
 #define AUD_PRIORITY          14
+#define CONT_PRIORITY         12
 
 #define PI_COMMAND_QUEUE_SIZE   8
 
@@ -158,6 +160,12 @@ extern void init_dma();
 extern void init_hvqm_task();
 extern void init_video(void **, u32);
 extern void show_next_frame(void **);
+
+// libc
+extern void bzero(void *, size_t);
+
+// fault
+extern void crash_screen_init();
 
 /*
  *  Address of HVQM2 data
