@@ -2,9 +2,10 @@
 Modification/Partial rewrite of the N64SDK `hvqmsample` demo.
 
 ## Goals
- - Decode faster than the original demo
+ - Decode faster than the original demo (This repo can already playback at 24fps on console without breaking a sweat)
  - Allow the easiest possible integration into other N64 games and ROM Hacks
  - Have both video playback functionality and "render-to-texture" functionality
+ - (_maybe_ in the far future) reimplement `libhvqm2`
 
 ## Why not just use MPEG-1 or -2?
 If _you_ want MPEG in your N64 game, you can just use [ultrampeg](https://github.com/devwizard64/ultra_mpeg) (libultra) or the built-in support in libdragon.
