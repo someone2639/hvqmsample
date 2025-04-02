@@ -81,7 +81,7 @@ SECTIONS
    }
    END_NOLOAD(hvqmbufs)
 
-   . = 0x80200000;
+   . = 0x80700000;
    
    BEGIN_NOLOAD(audiobufs)
    {
@@ -91,7 +91,7 @@ SECTIONS
 
    BEGIN_SEG(hvqmdata, __romPos)
    {
-      BUILD_DIR/assets/dressup.hvqm.o(.data);
+      BUILD_DIR/assets/rent.hvqm.o(.data);
    }
    END_SEG(hvqmdata)
    /* Discard everything not specifically mentioned above. */

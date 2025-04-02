@@ -270,6 +270,10 @@ void thread2_crash_screen(void *arg) {
     }
 }
 
+void fault_setcfb(u16 *buf) {
+    gCrashScreen.framebuffer = buf;
+}
+
 void crash_screen_init(int bufno) {
     gCrashScreen.framebuffer = (u16 *) cfb[bufno];
     gCrashScreen.width = 320;

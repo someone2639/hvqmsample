@@ -12,6 +12,8 @@
 #ifndef __SYSTEM_H__
 #define __SYSTEM_H__
 
+#include "macros.h"
+
 #define STACKSIZE  0x2000
 
 /**********************************************************************/
@@ -148,13 +150,14 @@ typedef struct {
 extern HVQM2Header hvqm_header;
 
 // Buffers
-extern u16 hvqwork[(MAXWIDTH/8)*(MAXHEIGHT/4)*4];       /* Work buffer for HVQM2 decoder */
-extern u64 hvq_yieldbuf[];  /* RSP task yield buffer */
-extern HVQM2Info hvq_spfifo[];  /* Data area for HVQM2 microcode */
 extern u8 adpcmbuf[];       /* Buffer for audio records ADPCM) */
-extern u8 hvqbuf[];     /* Buffer for video records (HVQM2) */
 extern s16 pcmbuf[NUM_PCMBUFs][PCMBUF_SIZE]; /* PCM data buffer */
 extern CFBPix cfb[NUM_CFBs][SCREEN_WD*SCREEN_HT]; /* Image frame buffer */
+
+extern u16 hvqwork[NUM_CFBs][(MAXWIDTH/8)*(MAXHEIGHT/4)*4];       /* Work buffer for HVQM2 decoder */
+extern u64 hvq_yieldbuf[NUM_CFBs][HVQM2_YIELD_DATA_SIZE/8];  /* RSP task yield buffer */
+extern HVQM2Info hvq_spfifo[HVQ_SPFIFO_SIZE];  /* Data area for HVQM2 microcode */
+extern u8 hvqbuf[NUM_CFBs][HVQ_DATASIZE_MAX];     /* Buffer for video records (HVQM2) */
 
 extern void init_dma();
 extern void init_hvqm_task();

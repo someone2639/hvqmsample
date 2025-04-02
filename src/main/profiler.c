@@ -64,6 +64,16 @@ void get_fps_vals(char *cname, char *rname) {
     osSyncPrintf("   Worst Case: %lf FPS\n", time2fps(cpu->maxTime + rsp->maxTime));
 }
 
+void fault_get_fps_vals(char *cname, char *rname) {
+    Profiler *cpu = search_profiler(cname);
+    Profiler *rsp = search_profiler(rname);
+
+    crash_screen_print(10, 10, "FPS:\n");
+    crash_screen_print(10, 20, "    Best Case: %lf FPS\n", time2fps(cpu->minTime + rsp->minTime));
+    crash_screen_print(10, 30, "      Average: %lf FPS\n", 1000.0 / (cpu->avgTime + rsp->avgTime));
+    crash_screen_print(10, 40, "   Worst Case: %lf FPS\n", time2fps(cpu->maxTime + rsp->maxTime));
+}
+
 void new_profiler(char *name) {
     if (search_profiler(name)) {
         return;

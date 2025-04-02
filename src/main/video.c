@@ -169,11 +169,9 @@ void decode_video(VideoRing *vbuf) {
         // Process last half in the RSP
         if (vbuf->status > 0) {
             osInvalDCache((void *) vbuf->cfb, SCREEN_WD * SCREEN_HT * sizeof(CFBPix));
-            start_profiler("HVQM Part2 (RSP)");
+            // if (wait)start_profiler("HVQM Part2 (RSP)");
             osSpTaskStart(&hvqtask);
             osRecvMesg(&spMesgQ, NULL, OS_MESG_BLOCK);
-            end_profiler("HVQM Part2 (RSP)");
-            print_profiler("HVQM Part2 (RSP)");
         }
     }
 }
@@ -217,4 +215,11 @@ void reset_video(void **streamp, u32 remainbase, u32 offset) {
 // Currently just a wrapper
 void VideoMain(void **streamp) {
     show_next_frame(streamp);
+
+    if (video_remain == 0) {
+        fault_setcfb(currVBuf->cfb);
+        crash_screen_draw_rect(0, 0, 200, 50);
+        fault_get_fps_vals("HVQM Part1 (CPU)", "HVQM Part2 (RSP)");
+        osViSwapBuffer(currVBuf->cfb);
+    }
 }

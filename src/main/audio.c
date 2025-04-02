@@ -164,11 +164,11 @@ void AudioMain(void *arg) {
         osSyncPrintf("PLAYBACK DONE\n");
         get_fps_vals("HVQM Part1 (CPU)", "HVQM Part2 (RSP)");
 
-#ifdef LOOP
+#ifdef HVQM_VIDLOOP
         reset_audio(&streamp);
 #else
         break;
-#endif // LOOP
+#endif // HVQM_VIDLOOP
 
     }
 

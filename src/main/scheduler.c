@@ -3,15 +3,8 @@
 #include <hvqm2dec.h>
 #include <adpcmdec.h>
 #include "system.h"
+#include "scheduler.h"
 
-enum MessageIDs {
-    MESG_SP_COMPLETE = 100,
-    MESG_DP_COMPLETE,
-    MESG_VI_VBLANK,
-    MESG_START_SPTASK,
-};
-
-#define SC_MESG_SIZE 16
 static OSMesgQueue scMessageQ;
 static OSMesg scMessages[SC_MESG_SIZE];
 

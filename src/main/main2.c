@@ -51,11 +51,10 @@ void Main(void *video) {
 
     init_dma();
     init_hvqm_task();
-    // init_controllers();
 
-#ifdef CONTSUPPORT
+#ifdef HVQM_CONTSUPPORT
     start_cont_thread();
-#endif // CONTSUPPORT
+#endif // HVQM_CONTSUPPORT
 
     // Initialize the frame buffer (clear buffer contents and status flag)
     osViSwapBuffer(cfb[NUM_CFBs - 1]);
@@ -105,20 +104,20 @@ void Main(void *video) {
             disptime_us = OS_CYCLES_TO_USEC(osGetTime());
             osRecvMesg(&viMessageQ, NULL, OS_MESG_BLOCK);
 
-#ifdef CONTSUPPORT
+#ifdef HVQM_CONTSUPPORT
             if (get_button() & A_BUTTON) {
                 // TODO: Pause
             }
-#endif // CONTSUPPORT
+#endif // HVQM_CONTSUPPORT
         }
 
-#ifdef LOOP
+#ifdef HVQM_VIDLOOP
         video_streamP = vstreambase;
         reset_video(&video_streamP, vremain_base, screen_offset);
         disptime_us = 0;
 #else
         break;
-#endif // LOOP
+#endif // HVQM_VIDLOOP
     }
 
     while (1) { ; }
