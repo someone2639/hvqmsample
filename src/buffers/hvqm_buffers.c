@@ -23,5 +23,8 @@ CFBPix cfb[NUM_CFBs][SCREEN_WD*SCREEN_HT] ALIGNED(0x100);
  */
 u8 hvqbuf[NUM_CFBs][HVQ_DATASIZE_MAX] ALIGNED(0x100);
 
+u64 system_rdpfifo[RDPFIFO_SIZE] ALIGNED(0x40);
+u64 system_rspyield[OS_YIELD_DATA_SIZE / sizeof(u64)] ALIGNED(0x40);
+
 
 /* end */

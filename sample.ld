@@ -43,6 +43,7 @@ SECTIONS
       */libultra_d.a:*.o(.text);
       */libhvqm2.a:*.o(.text);
       */libgcc.a:*.o(.text);
+      /usr/lib/n64/PR/gspF3DEX2.fifo.o(.text);
       /usr/lib/n64/PR/rspboot.o(.text);
       /usr/lib/n64/hvqm/hvqm2sp1.o(.text);
 
@@ -52,6 +53,7 @@ SECTIONS
       */libultra_d.a:*.o(.data*);
       */libhvqm2.a:*.o(.data*);
       /usr/lib/n64/PR/rspboot.o(.data*);
+      /usr/lib/n64/PR/gspF3DEX2.fifo.o(.data*);
       /usr/lib/n64/hvqm/hvqm2sp1.o(.data*);
 
       /* rodata */
@@ -91,7 +93,7 @@ SECTIONS
 
    BEGIN_SEG(hvqmdata, __romPos)
    {
-      BUILD_DIR/assets/fakecrash.hvqm.o(.data);
+      BUILD_DIR/assets/dressup2.hvqm.o(.data);
    }
    END_SEG(hvqmdata)
    /* Discard everything not specifically mentioned above. */

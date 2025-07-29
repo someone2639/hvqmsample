@@ -4,7 +4,7 @@
 #include "system.h"
 #include "profiler.h"
 
-static OSMesgQueue spMesgQ;
+OSMesgQueue spMesgQ;
 static OSMesg spMesgBuf;
 
 OSTask hvqtask;     // RSP task data
@@ -35,6 +35,11 @@ u32 video_remain = 0;
 u32 usec_per_frame = 0;
 u32 frames_elapsed = 0;
 
+void hvqm_drawHLE(void *buf);
+
+// #define HVQM_DRAW(cfb) hvqm_drawHLE(cfb)
+#define HVQM_DRAW(cfb) osViSwapBuffer(cfb)
+
 u32 video_playing() {
     return (playtime_us != 0) && (disptime_us != 0) && (frames_elapsed > NUM_CFBs);
 }
@@ -55,7 +60,7 @@ void init_video(void **streamp, u32 offset) {
         decode_video(&vbuffer[i]);
     }
 
-    osViSwapBuffer(vbuffer[0].cfb);
+    HVQM_DRAW(vbuffer[0].cfb);
 
     disptime_us = 0;
     currVBuf = &vbuffer[0];
@@ -105,11 +110,18 @@ void load_video_frame(void **streamp, VideoRing *vbuf) {
     // Frameskip
     if (video_playing()) {
         // Only skip if 2 audio frames behind
-        if (playtime_us > (starttime_us + (usec_per_frame * 2))) {
+        if (playtime_us > (starttime_us + (usec_per_frame * 20))) {
             // Skip only as far as needed to sync up again, or to the next keyframe.
             //  Whichever comes first.
             while (playtime_us > starttime_us) {
-                skip_record(record_size, streamp);
+                // if (record_header.format == HVQM2_VIDEO_KEYFRAME) {
+                //     // load this keyframe because we need this info
+                //     load_record(record_size, HVQM2_VIDEO, hvqbuf, streamp);
+                //     decode_video(currVBuf);
+                // } else {
+                    skip_record(record_size, streamp);
+                // }
+                // load_record(record_size, HVQM2_VIDEO, hvqbuf, streamp);
                 starttime_us += usec_per_frame;
                 skipped_frames++;
                 frames_elapsed++;
@@ -148,6 +160,7 @@ void decode_video(VideoRing *vbuf) {
     if (vbuf->format == HVQM2_VIDEO_HOLD) {
        // do nothing
         vbuf->endtime_us += usec_per_frame;
+        osSyncPrintf("This is a hold frame");
     } else {
         // Process first half in the CPU
         hvqtask.t.flags = 0;
@@ -199,7 +212,7 @@ void show_next_frame(void **streamp) {
         frames_elapsed++;
     }
     if (currVBuf->format != HVQM2_VIDEO_HOLD) {
-        osViSwapBuffer(currVBuf->cfb);
+        HVQM_DRAW(currVBuf->cfb);
         osYieldThread();
     }
 }
@@ -220,6 +233,6 @@ void VideoMain(void **streamp) {
         fault_setcfb(currVBuf->cfb);
         crash_screen_draw_rect(0, 0, 200, 50);
         fault_get_fps_vals("HVQM Part1 (CPU)", "HVQM Part2 (RSP)");
-        osViSwapBuffer(currVBuf->cfb);
+        HVQM_DRAW(currVBuf->cfb);
     }
 }

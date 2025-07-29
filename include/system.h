@@ -43,6 +43,8 @@
  */
 #define HVQ_DATASIZE_MAX  300000
 
+#define RDPFIFO_SIZE    (8*1024/sizeof(u64))
+
 /*
  * Size of buffer for audio records
  */
@@ -158,6 +160,10 @@ extern u16 hvqwork[NUM_CFBs][(MAXWIDTH/8)*(MAXHEIGHT/4)*4];       /* Work buffer
 extern u64 hvq_yieldbuf[NUM_CFBs][HVQM2_YIELD_DATA_SIZE/8];  /* RSP task yield buffer */
 extern HVQM2Info hvq_spfifo[HVQ_SPFIFO_SIZE];  /* Data area for HVQM2 microcode */
 extern u8 hvqbuf[NUM_CFBs][HVQ_DATASIZE_MAX];     /* Buffer for video records (HVQM2) */
+
+extern u64 system_rdpfifo[RDPFIFO_SIZE];
+extern u64 system_rspyield[OS_YIELD_DATA_SIZE / sizeof(u64)];
+
 
 extern void init_dma();
 extern void init_hvqm_task();
