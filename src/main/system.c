@@ -39,13 +39,19 @@ OSThread hvqmThread;
 static u64 hvqmThreadStack[STACKSIZE / 8];
 
 u32 gfxselect = 0;
-Gfx gfxbuf[NUM_CFBs][1000];
+Gfx gfxbuf[NUM_CFBs][100];
 Gfx *video_glistp;
 
 extern OSMesgQueue spMesgQ;
 
 static void select_gfx_pool() {
-    video_glistp = gfxbuf[++gfxselect];
+    u32 select = (++gfxselect);
+
+    select = select >= NUM_CFBs ? 0 : select;
+
+    video_glistp = gfxbuf[select];
+
+    gfxselect = select;
 }
 
 static void render_multi_image(u8 *image, s32 x, s32 y, s32 width, s32 height) {
@@ -169,13 +175,17 @@ OSMesg dpMesg;
 void hvqm_drawHLE(void *buf) {
     select_gfx_pool();
     // gDPPipeSync(video_glistp++);
-    gDPSetColorImage(video_glistp++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, buf);
-    gDPSetScissor(video_glistp++, G_SC_NON_INTERLACE, 0, 0, 320, 240);
+    gDPSetColorImage(video_glistp++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WD, buf);
+    gDPSetScissor(video_glistp++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WD, SCREEN_HT);
 
-    render_multi_image((u8 *) buf, 0, 0, 320, 240);
+    render_multi_image((u8 *) buf, 0, 0, SCREEN_WD, SCREEN_HT);
 
     gDPFullSync(video_glistp++);
     gSPEndDisplayList(video_glistp++);
+
+    osSyncPrintf("Generated %d commands! gfxselect is %d\n",
+        (video_glistp - gfxbuf[gfxselect]) / sizeof(Gfx), gfxselect
+    );
 
     osWritebackDCacheAll();
     makeF3DTask();
@@ -212,7 +222,7 @@ static void idle(void *arg) {
     osViSetSpecialFeatures(OS_VI_GAMMA_OFF);
 
     #define VIDEO(x) (_ ## x ## SegmentRomStart)
-    #define EXTERN_VIDEO(x) extern u8 (_ ## x ## SegmentRomStart)[];
+    #define EXTERN_VIDEO(x) extern u8 (_ ## x ## SegmentRomStart)[] __attribute__((weak));
 
     EXTERN_VIDEO(hvqmdata);
 
